@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<table>
+    <th>employé</th>
+    <th>Nbr de bon créés</th>
+    {% for obj in nbr_transfert %}
+    <tr>
+        <td>
+            {{ obj.created_by__username }}
+        </td>
+        <td>
+            {{ obj.sum_id }}
+        </td>
+        <td>
+            {{ obj.sum_lines }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+<table>
+    <th>Employé</th>
+    <th>Nbr de Linges créés</th>
+    {% for obj in nbr_ligne_transfert %}
+    <tr>
+        <td>
+            {{ obj.created_by__username }}
+        </td>
+        <td>
+            {{ obj.sum_lines }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+<table>
+    <th>Employé</th>
+    <th>Nbr de Bon validés</th>
+    {% for obj in nbr__validation_transfert %}
+    <tr>
+        <td>
+            {{ obj.validate_by__username }}
+        </td>
+        <td>
+            {{ obj.sum_id }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+<table>
+    <th>Employé</th>
+    <th>Nbr de lignes validés</th>
+    {% for obj in nbr_ligne_validation_transfert %}
+    <tr>
+        <td>
+            {{ obj.validate_by__username }}
+        </td>
+        <td>
+            {{ obj.sum_lines }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+</body>
+</html>
