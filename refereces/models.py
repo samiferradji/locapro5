@@ -170,6 +170,15 @@ class StatutsAutorise(models.Model):
     user = models.ForeignKey(User, verbose_name='Utilisateur')
     statuts = models.ForeignKey(StatutProduit, verbose_name='Statuts Autorisés')
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(User)
+    code_rh = models.CharField(max_length=10, verbose_name='Code RH')
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
 
 @receiver(post_save, sender=Magasin, dispatch_uid="add_emplacement_instance")
 def auto_add_emplacement_instance(sender, instance, created, **kwargs):

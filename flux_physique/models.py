@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from refereces.models import StatutDocument, StatutProduit, Produit, Founisseur, Magasin, Emplacement, Client,\
-    TypesMouvementStock, Employer
+    TypesMouvementStock, Employer, TypeEntreposage
 
 
 exercice = 2017
@@ -239,8 +239,16 @@ class Reservation(models.Model):
 class Validation(BaseModel):
     id_in_content_type = models.PositiveIntegerField(verbose_name='Id in content type')
     content_type = models.PositiveIntegerField(verbose_name='Contenent type')
-    boite_count = models.PositiveIntegerField(verbose_name='Nombre de boites')
-    ligne_count = models.PositiveIntegerField(verbose_name='Nombre de lignes')
+    boite_count = models.IntegerField(verbose_name='Nombre de boites')
+    boites_en_vrac = models.IntegerField(verbose_name='Nombre de boites en VRAC', default=0)
+    ligne_count = models.IntegerField(verbose_name='Nombre de lignes')
+    colis_count = models.IntegerField(verbose_name='Nombre de colis', default=0)
+    colis_en_palette = models.IntegerField(verbose_name='Nombre de colis palettisés', default=0)
+    motif_mvnt = models.ForeignKey(TypesMouvementStock, verbose_name='Motif du mouvement de stock', default=1)
+    origin_created_date = models.DateTimeField(default=timezone.now)
+    origine_created_by = models.ForeignKey(User, related_name='user_creat_Bon', default=2)
+
+
 
     def __str__(self):
         return ' '.join((str(self.id_in_content_type), str(self.content_type)))

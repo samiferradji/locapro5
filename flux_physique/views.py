@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from django.db import transaction
 import csv
 import operator
 from datetime import date, timedelta, datetime
@@ -6,6 +7,8 @@ from functools import reduce
 from django.core.paginator import PageNotAnInteger, EmptyPage, Paginator
 from django.db.models import Q, Count
 from django.db.models import Sum, Min, When, Case
+from django.db.models import F
+from django.db.models.expressions import Value
 from django_ajax.decorators import ajax
 from django.forms import modelform_factory
 from django.shortcuts import render
@@ -28,6 +31,7 @@ def home(request):
     username = ' '.join((request.user.first_name, request.user.last_name))
     return render(request, 'home.html', {'username': username})
 
+
 @login_required(login_url='/login/')
 def logout_view(request):
     logout(request)
@@ -39,19 +43,21 @@ def logout_view(request):
 def produits_par_magasin(request):
     key_words = request.POST['key_words']
     key_words_list = key_words.split(' ')
-    current_magasin_id=int(request.POST['current_magasin_id'])
-    queryset = Stock.objects.all().distinct().values('produit_id','produit__produit').filter(
-        reduce(operator.and_, (Q(produit__produit__icontains=x) for x in key_words_list))).filter(emplacement__magasin_id=current_magasin_id).order_by('produit__produit')
+    current_magasin_id = int(request.POST['current_magasin_id'])
+    queryset = Stock.objects.all().distinct().values('produit_id', 'produit__produit').filter(
+        reduce(operator.and_, (Q(produit__produit__icontains=x) for x in key_words_list))).filter(
+        emplacement__magasin_id=current_magasin_id).order_by('produit__produit')
     return queryset
+
 
 @ajax
 def list_des_produit(request):
     q = request.GET['q']
     keys_list = q.split(' ')
     maxRows = int(request.GET['maxRows'])
-    query = Produit.objects.all().values('id','produit').order_by(
-        'produit').filter( reduce(operator.and_, (Q(produit__icontains=x) for x in keys_list))
-                               )[:maxRows]
+    query = Produit.objects.all().values('id', 'produit').order_by(
+        'produit').filter(reduce(operator.and_, (Q(produit__icontains=x) for x in keys_list))
+                          )[:maxRows]
     return query
 
 
@@ -66,7 +72,8 @@ def add_transfert(request):
     product_form = ProductModelForm()
     form = TransfertModelForm(user=user)
     return render(request, 'flux_physique/add_transfert.html', {'form': form, 'product_form': product_form,
-                                                  'user': user, 'username': username})
+                                                                'user': user, 'username': username})
+
 
 @login_required(login_url='/login/')
 @permission_required('flux_physique.sortie_colis_complets', raise_exception=True)
@@ -76,7 +83,7 @@ def add_sortie_en_colis(request):
     product_form = ProductModelForm()
     form = TransfertModelForm(user=user)
     return render(request, 'flux_physique/add_sortie_colis.html', {'form': form, 'product_form': product_form,
-                                                  'user': user, 'username': username})
+                                                                   'user': user, 'username': username})
 
 
 @ajax
@@ -101,7 +108,7 @@ def print_transfert(request):
         'qtt'
     ).order_by('depuis_emplacement__emplacement')
     for obj in details_transfert:
-        if obj['colisage'] !=0:
+        if obj['colisage'] != 0:
             obj['vrac'] = int(obj['qtt']) % int(obj['colisage'])
             obj['colis'] = int(obj['qtt']) // int(obj['colisage'])
         else:
@@ -113,7 +120,7 @@ def print_transfert(request):
         {
             'transfer': transfert,
             'details_transfert': details_transfert,
-            'type_mouvement':type_mouvement
+            'type_mouvement': type_mouvement
         })
 
 
@@ -130,7 +137,7 @@ def add_entreposage(request):
     product_form = ProductModelForm()
     form = EntreposageModelForm(user=user)
     return render(request, 'flux_physique/add_entreposage.html', {'form': form, 'product_form': product_form,
-                                                  'user': user, 'username': username})
+                                                                  'user': user, 'username': username})
 
 
 @ajax
@@ -155,7 +162,7 @@ def print_entreposage(request):
         'qtt'
     )
     for obj in details_transfert:
-        if obj['colisage'] !=0:
+        if obj['colisage'] != 0:
             obj['vrac'] = int(obj['qtt']) % int(obj['colisage'])
             obj['colis'] = int(obj['qtt']) // int(obj['colisage'])
         else:
@@ -167,7 +174,7 @@ def print_entreposage(request):
         {
             'transfer': transfert,
             'details_transfert': details_transfert,
-            'type_mouvement':type_mouvement})
+            'type_mouvement': type_mouvement})
 
 
 @ajax
@@ -183,7 +190,7 @@ def add_entreposage_reservation(request):
         form = entete_reservation_form(request.POST)
         if form.is_valid():
             new_tempo_id = form.save()
-            return {'new_id':new_tempo_id.id,'emplacements':emplacements}
+            return {'new_id': new_tempo_id.id, 'emplacements': emplacements}
         else:
             return False
     return False
@@ -215,7 +222,7 @@ def entreposage_reservation_table(request):  # TODO filter on product conformity
         ppa = str(item_list[6])
         item_list[6] = ppa
         item_list[5] = ddp
-        if item_list[9] !=0:
+        if item_list[9] != 0:
             vrac = int(item_list[10]) % (item_list[9])
             item_list.append(vrac)
             colis = int(item_list[10]) // (item_list[9])
@@ -223,7 +230,7 @@ def entreposage_reservation_table(request):  # TODO filter on product conformity
         else:
             vrac = item_list[10]
             item_list.append(vrac)
-            colis =  0
+            colis = 0
         item_list.append(colis)
 
         reservation_list.append(item_list)
@@ -236,9 +243,9 @@ def list_des_emplacement(request):
     q = request.GET['q']
     keys_list = q.split(' ')
     maxRows = int(request.GET['maxRows'])
-    query = Emplacement.objects.all().values('id','emplacement').order_by(
-        'emplacement').filter( reduce(operator.and_, (Q(emplacement__icontains=x) for x in keys_list))
-                               )[:maxRows]
+    query = Emplacement.objects.all().values('id', 'emplacement').order_by(
+        'emplacement').filter(reduce(operator.and_, (Q(emplacement__icontains=x) for x in keys_list))
+                              )[:maxRows]
     return query
 
 
@@ -246,7 +253,8 @@ def list_des_emplacement(request):
 @login_required(login_url='/login/')
 @ajax
 def entreposage_add_ligne_reservation(request):
-    details_reservation_form = modelform_factory(Reservation, fields=['entete_tempo', "id_stock", 'qtt','new_emplacement'])
+    details_reservation_form = modelform_factory(Reservation,
+                                                 fields=['entete_tempo', "id_stock", 'qtt', 'new_emplacement'])
     if request.method == "POST":
         if request.POST['action'] == 'add':
             id_stock = int(request.POST['id_stock'])
@@ -260,6 +268,7 @@ def entreposage_add_ligne_reservation(request):
                     print(form.errors)
             else:
                 return check_qtt_disponible(id_stock=id_stock, qtt=qtt)
+
 
 # *****************************************************************************************************
 #                                       Concurences et reservations
@@ -285,7 +294,7 @@ def sum_qtt_reserved(id_stock):
             id_stock=id_stock
         )['sum_reserved']
         return total
-    except :
+    except:
         return 0
 
 
@@ -301,16 +310,16 @@ def check_qtt_disponible(id_stock, qtt):
             Case(
                 When(Q(recu=True) | (Q(recu=False) and Q(motif='Transfert-Out')), then='qtt'),
                 default=0)
-            )
-
         )
+
+    )
     sum_reserved = int(sum_qtt_reserved(id_stock))
     sum_totale = 0
     for obj in queryset:
         sum_totale += int(obj['sum_totale'])
     qtt_dispo = sum_totale - sum_reserved
-    if qtt > qtt_dispo :
-        return ' '.join(('Quantité disponible : ',str(qtt_dispo)))
+    if qtt > qtt_dispo:
+        return ' '.join(('Quantité disponible : ', str(qtt_dispo)))
     if qtt < 0:
         return 'Quantité négative non acceptée'
     else:
@@ -409,7 +418,7 @@ def reservation_table(request):
         ppa = str(item_list[6])
         item_list[6] = ppa
         item_list[5] = ddp
-        if item_list[9] !=0:
+        if item_list[9] != 0:
             vrac = int(item_list[10]) % (item_list[9])
             item_list.append(vrac)
             colis = int(item_list[10]) // (item_list[9])
@@ -460,11 +469,11 @@ def stock_disponible(request):
         sum_encours_in=Sum(
             Case(
                 When(Q(recu=False) & Q(motif='Transfert-In'), then='qtt'), default=0))
-    ).filter(~Q(sum_encours_in__exact=0)|~Q(sum_totale__exact=0)|~Q(sum_encours_out__exact=0))
+    ).filter(~Q(sum_encours_in__exact=0) | ~Q(sum_totale__exact=0) | ~Q(sum_encours_out__exact=0))
     for obj in queryset:
         obj['date_peremption'] = obj['date_peremption'].isoformat()
         obj['ppa_ht'] = str(obj['ppa_ht'])
-        if obj['colisage'] !=0:
+        if obj['colisage'] != 0:
             obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
             obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
         else:
@@ -477,7 +486,7 @@ def stock_disponible(request):
 
 @login_required(login_url='/login/')
 @ajax
-def stock_disponible_vente(request): # todo developper un interface vente
+def stock_disponible_vente(request):  # todo developper un interface vente
     product_id = request.GET['current_produit']
     user = request.user.id
     authorised_magasins = Magasin.objects.filter(depuismagasinsautorise__user=user).values_list('id')
@@ -511,7 +520,7 @@ def stock_disponible_vente(request): # todo developper un interface vente
     for obj in queryset:
         obj['date_peremption'] = obj['date_peremption'].isoformat()
         obj['ppa_ht'] = str(obj['ppa_ht'])
-        if obj['colisage'] !=0:
+        if obj['colisage'] != 0:
             obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
             obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
         else:
@@ -537,21 +546,21 @@ def qtt_disponible(request):  # aficher les produits disponibles pour le transfe
             'colisage',
             'conformite__statut',
         ).filter(n_lot=obj_stock.n_lot,
-             date_peremption=obj_stock.date_peremption,
-             ppa_ht=obj_stock.ppa_ht,
-             emplacement=obj_stock.emplacement,
-             conformite=obj_stock.conformite
-             ).annotate(
-        sum_totale=Sum(
-            Case(
-                When(Q(recu=True) | Q(motif='Transfert-Out'), then='qtt'), default=0)),
-            )
+                 date_peremption=obj_stock.date_peremption,
+                 ppa_ht=obj_stock.ppa_ht,
+                 emplacement=obj_stock.emplacement,
+                 conformite=obj_stock.conformite
+                 ).annotate(
+            sum_totale=Sum(
+                Case(
+                    When(Q(recu=True) | Q(motif='Transfert-Out'), then='qtt'), default=0)),
+        )
         for obj in queryset:
             obj['date_peremption'] = obj['date_peremption'].isoformat()
             obj['ppa_ht'] = str(obj['ppa_ht'])
             obj['sum_reserved'] = sum_qtt_reserved(id_stock)
             obj['sum_disponible'] = obj['sum_totale'] - obj['sum_reserved']
-            if obj['colisage'] !=0:
+            if obj['colisage'] != 0:
                 obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
                 obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
             else:
@@ -588,13 +597,13 @@ def post_validation(request):
     type_transaction = request.POST['type_transaction']
     if type_transaction == "check_id_transfert":
         transaction = Transfert.objects.filter(id=id_transaction, statut_doc_id=1)
-        if transaction.count()==1:
+        if transaction.count() == 1:
             return 'OK'
         else:
             return 'Veuillez saisir un N° valide'
     if type_transaction == "check_id_achat":
         transaction = AchatsFournisseur.objects.filter(n_BL=id_transaction, statut_doc_id=1)
-        if transaction.count()==1:
+        if transaction.count() == 1:
             return 'OK'
         else:
             return 'Veuillez saisir un N° valide'
@@ -610,7 +619,6 @@ def post_validation(request):
         code_RH2=code_rh2,
         code_RH3=code_rh3,
     )
-
 
 
 @ajax
@@ -666,7 +674,6 @@ def return_emplyee_by_coderh(request):
         return 'VIDE'
 
 
-
 # *****************************************************************************************************
 #                                       Rapport Stock
 # *****************************************************************************************************
@@ -706,10 +713,11 @@ def stock_par_categorie(request):
                     obj['vrac'] = obj['qtt__sum']
             return queryset
 
+
 @permission_required('flux_physique.voir_stock', raise_exception=True)
 def stock_par_magasin(request):
     username = ' '.join((request.user.first_name, request.user.last_name))
-    filtre =''
+    filtre = ''
     query = Stock.objects.values(
         'produit',
         'produit__code',
@@ -718,7 +726,7 @@ def stock_par_magasin(request):
         'produit__dci__forme_phrmaceutique__forme',
         'produit__conditionnement',
     ).filter(recu=True).annotate(Sum('qtt')).order_by('produit__produit')
-    if request.method =='POST':
+    if request.method == 'POST':
         filtre = request.POST['filtre']
         query = query.filter(produit__produit__icontains=filtre)
     paginator = Paginator(query, 15)
@@ -730,8 +738,8 @@ def stock_par_magasin(request):
     except EmptyPage:
         stock_page = paginator.page(paginator.num_pages)
 
-
-    return render(request, 'flux_physique/rapport_stock.html', {'stock':stock_page, 'filtre':filtre, 'username':username})
+    return render(request, 'flux_physique/rapport_stock.html',
+                  {'stock': stock_page, 'filtre': filtre, 'username': username})
 
 
 # *****************************************************************************************************
@@ -781,7 +789,7 @@ def details_par_mouvement(request):
                 'qtt'
             ).order_by('depuis_emplacement__emplacement')
             for obj in details_transfert:
-                if obj['colisage'] !=0:
+                if obj['colisage'] != 0:
                     obj['vrac'] = int(obj['qtt']) % int(obj['colisage'])
                     obj['colis'] = int(obj['qtt']) // int(obj['colisage'])
                 else:
@@ -829,6 +837,7 @@ def details_par_mouvement(request):
                               'type_mouvement': type_mouvement
                           })
 
+
 @permission_required('flux_physique.voir_historique_transferts', raise_exception=True)
 def list_mouvements(request):
     username = ' '.join((request.user.first_name, request.user.last_name))
@@ -839,12 +848,12 @@ def list_mouvements(request):
     date_fin_adjusted = date_fin + one_day
     date_debut = date_debut.isoformat()
     date_fin = date_fin.isoformat()
-    if request.method =='POST':
+    if request.method == 'POST':
         date_debut = request.POST['from_date']
         date_fin = request.POST['to_date']
         items = date_fin.split('-')
-        items[2] = int(items[2])+1
-        date_fin_adjusted = items[0] + '-' + items[1]+'-'+str(items[2])
+        items[2] = int(items[2]) + 1
+        date_fin_adjusted = items[0] + '-' + items[1] + '-' + str(items[2])
     query = Transfert.objects.values(
         'id',
         'created_date',
@@ -866,11 +875,12 @@ def list_mouvements(request):
 
     return render(request, 'flux_physique/historique_mouvement.html',
                   {
-                      'mouvements':mouvements_page,
-                      'from_date':date_debut,
+                      'mouvements': mouvements_page,
+                      'from_date': date_debut,
                       'to_date': date_fin,
-                      'username':username
+                      'username': username
                   })
+
 
 @permission_required('flux_physique.voir_historique_achats', raise_exception=True)
 def list_achats(request):
@@ -911,11 +921,12 @@ def list_achats(request):
 
     return render(request, 'flux_physique/historique_achats.html',
                   {
-                      'mouvements':mouvements_page,
-                      'from_date':date_debut,
+                      'mouvements': mouvements_page,
+                      'from_date': date_debut,
                       'to_date': date_fin,
-                      'username':username
+                      'username': username
                   })
+
 
 @permission_required('flux_physique.exporter_stock', raise_exception=True)
 def stock_csv(request):
@@ -937,19 +948,22 @@ def stock_csv(request):
         'emplacement__magasin__magasin',
         'colisage',
         'conformite__statut',
-        'qtt',
-        'motif',
-        'produit_id',
-        'emplacement_id',
-        'produit__code',
-        'prix_achat',
-        'prix_vente',
-        ).order_by('motif')#.annotate(Sum('qtt')).order_by('produit__produit').filter(recu=True)
+    ).annotate(Sum('qtt')).order_by('produit__produit').filter(recu=True)
     stock = []
     for obj in queryset:
         obj = list(obj)
-        stock.append(obj)
-
+        if obj[9] != 0:
+            colis = int(obj[11]) % (obj[9])
+            vrac = int(obj[11]) // (obj[9])
+            obj.append(colis)
+            obj.append(vrac)
+            stock.append(obj)
+        else:
+            colis = 0
+            vrac = obj[11]
+            obj.append(colis)
+            obj.append(vrac)
+            stock.append(obj)
     writer.writerow(
         ['Produit',
          'Dosage',
@@ -963,12 +977,8 @@ def stock_csv(request):
          'Colisage',
          'Statut',
          'Qtt',
-         'motif',
-         'id_produit',
-         'id_emplacement',
-         'code_produit',
-         'acaht',
-         'vente'
+         'Colis',
+         'Vrac'
          ]
     )
     for obj in stock:
@@ -980,24 +990,245 @@ def stock_csv(request):
 
 
 def rapport_efforts(request):
-    nbr_transfert = Transfert.objects.all().values(
-        'created_by__username').annotate(sum_id=Count('id'))
-    nbr_ligne_transfert = Transfert.objects.all().values(
-        'created_by__username').annotate(sum_lines=Count('detailstransfert__id'))
-    nbr__validation_transfert = Transfert.objects.all().values(
-        'validate_by__username').annotate(sum_id=Count('id'))
-    nbr_ligne_validation_transfert = Transfert.objects.all().values(
-        'validate_by__username').annotate(sum_lines=Count('detailstransfert__id'))
-    nbr_validation_achat = AchatsFournisseur.objects.all().values(
-        'validate_by__username').annotate(sum_lines=Count('detailsachatsfournisseur__id'))
-    nbr_ligne_validation_achat = AchatsFournisseur.objects.all().values(
-        'validate_by__username').annotate(sum_lines=Count('detailsachatsfournisseur__id'))
+    Efforts = []
+    entete_transfert = Transfert.objects.all().values(
+        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    entete_achat = AchatsFournisseur.objects.all().values(
+        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    lignes_transfert = DetailsTransfert.objects.all().values(
+        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    lignes_achat = DetailsAchatsFournisseur.objects.all().values(
+        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    entete_transfert_validation = Transfert.objects.all().values(
+        'validate_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    lignes_transfert_validation = Transfert.objects.all().values(
+        'validate_by__username').annotate(sum_lines=Count(
+        'detailstransfert__id')).filter(created_date__range=['2016-12-21','2017-01-21'])
+    colis_transfert_validation = Transfert.objects.values(
+        'validate_by__username',
+        ).annotate(nbr_colis=Sum(F('detailstransfert__qtt') / F('detailstransfert__colisage')
+                                 )).filter(created_date__range=['2016-12-21','2017-01-21'])
+
+    for obj in entete_transfert:
+        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Bon', 'Création transfert']
+        Efforts.append(new_liste)
+    for obj in entete_achat:
+        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Bon', "Création achat"]
+        Efforts.append(new_liste)
+    for obj in lignes_transfert:
+        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Lignes', "Création transfert"]
+        Efforts.append(new_liste)
+    for obj in lignes_achat:
+        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Lignes', "Création achats"]
+        Efforts.append(new_liste)
+    for obj in entete_transfert_validation:
+        new_liste = [obj['validate_by__username'], obj['sum_lines'], 'Bon', "Validation transfert"]
+        Efforts.append(new_liste)
+    for obj in lignes_transfert_validation:
+        new_liste = [obj['validate_by__username'], obj['sum_lines'], 'Lignes', "Validation transfert"]
+        Efforts.append(new_liste)
+    for obj in colis_transfert_validation:
+        new_liste = [obj['validate_by__username'], obj['nbr_colis'], 'Colis', "Validation transfert"]
+        Efforts.append(new_liste)
+
+    @transaction.atomic   # ajouter le type etalage avant de lancer, derniere validation 10627
+    def set_entreposage():
+        query = Transfert.objects.all().filter(created_date__lt="2016-12-27 13:32:07")
+        for obj in query:
+            if obj.depuis_magasin == obj.vers_magasin:
+                obj.motif_id = 4
+                obj.save()
+
+    @transaction.atomic
+    def set_etalage():
+        query = Transfert.objects.all()
+        for obj in query:
+            if obj.vers_magasin_id == 3 and obj.motif != 3:
+                obj.motif_id = 5
+                obj.save()
+
+    @transaction.atomic
+    def set_sortie_colis():
+        query = Transfert.objects.all().filter(created_date__lt="2016-12-27 13:32:07")
+        for obj in query:
+            if obj.vers_magasin_id == 3 and obj.created_by_id in [4,5] and obj.validate_by_id in [11,24,28,29]:
+                obj.motif_id = 3
+                obj.save()
+
+    @transaction.atomic
+    def set_validation_achat():
+        query = Validation.objects.all()
+        for obj in query:
+            if obj.content_type == 25:   #  Achat
+                current_bon = AchatsFournisseur.objects.get(id=obj.id_in_content_type)
+                curent_lines = DetailsAchatsFournisseur.objects.filter(entete=current_bon.id)
+                # *****colis ********
+                colis = 0
+                colis_en_palette = 0
+                vrac = 0
+                for line in curent_lines:
+                    current_colis_count = 0
+                    current_vrac_count = 0
+                    if line.colisage != 0:
+                        current_colis_count = line.qtt // line.colisage
+                        current_vrac_count = line.qtt % line.colisage
+                        colis += current_colis_count
+                        vrac += current_vrac_count
+                    else:
+                        current_vrac_count = line.qtt
+                        vrac += current_vrac_count
+                obj.colis_count = colis
+                obj.colis_en_palette = colis_en_palette
+                obj.boites_en_vrac = vrac
+                obj.motif_mvnt_id = 2
+                # ****** origine created by , date ******
+                obj.origin_created_date = current_bon.created_date
+                obj.origine_created_by = current_bon.created_by
+            obj.save()
+
+    @transaction.atomic
+    def set_validation_transfert():
+        query = Validation.objects.all()
+        for obj in query:
+            if obj.content_type == 31:  # transfert
+                current_bon = Transfert.objects.get(id=obj.id_in_content_type)
+                curent_lines = DetailsTransfert.objects.filter(entete=current_bon.id)
+                if current_bon.motif_id == 1:
+                    colis = 0
+                    colis_en_palette = 0
+                    vrac = 0
+                    for line in curent_lines:
+                        current_colis_count = 0
+                        current_vrac_count = 0
+                        if line.colisage != 0:
+                            current_colis_count = line.qtt // line.colisage
+                            current_vrac_count = line.qtt % line.colisage
+                            colis += current_colis_count
+                            vrac += current_vrac_count
+                        else:
+                            current_vrac_count = line.qtt
+                            vrac += current_vrac_count
+                    obj.colis_count = colis
+                    obj.colis_en_palette = colis_en_palette
+                    obj.boites_en_vrac = vrac
+                if current_bon.motif_id == 3:
+                    colis = 0
+                    colis_en_palette = 0
+                    vrac = 0
+                    for line in curent_lines:
+                        current_colis_count = 0
+                        current_vrac_count = 0
+                        if line.colisage != 0:
+                            current_colis_count = line.qtt // line.colisage
+                            current_vrac_count = line.qtt % line.colisage
+                            colis += current_colis_count
+                            vrac += current_vrac_count
+                        else:
+                            current_vrac_count = line.qtt
+                            vrac += current_vrac_count
+                    obj.colis_count = colis
+                    obj.colis_en_palette = colis_en_palette
+                    obj.boites_en_vrac = vrac
+                if current_bon.motif_id == 4:
+                    colis = 0
+                    colis_en_palette = 0
+                    vrac = 0
+                    for line in curent_lines:
+                        current_colis_count = 0
+                        current_vrac_count = 0
+                        if line.colisage != 0:
+                            current_colis_count = line.qtt // line.colisage
+                            current_vrac_count = line.qtt % line.colisage
+                            colis += current_colis_count
+                            vrac += current_vrac_count
+                        else:
+                            current_vrac_count = line.qtt
+                            vrac += current_vrac_count
+                    obj.colis_count = colis
+                    obj.colis_en_palette = colis_en_palette
+                    obj.boites_en_vrac = vrac
+                if current_bon.motif_id == 5:
+                    colis = 0
+                    colis_en_palette = 0
+                    vrac = 0
+                    for line in curent_lines:
+                        current_colis_count = 0
+                        current_vrac_count = 0
+                        if line.colisage != 0:
+                            if line.produit.type_entreposage_id == 1:
+                                current_vrac_count = line.qtt
+                                vrac += current_vrac_count
+                            if line.produit.type_entreposage_id == 2:
+                                current_colis_count = line.qtt // line.colisage
+                                current_vrac_count = line.qtt % line.colisage
+                                colis += current_colis_count
+                                vrac += current_vrac_count
+                            if line.produit.type_entreposage_id == 3:
+                                current_colis_count = line.qtt // line.colisage
+                                current_vrac_count = line.qtt % line.colisage
+                                colis_en_palette += current_colis_count
+                                vrac += current_vrac_count
+                        else:
+                            current_vrac_count = line.qtt
+                            vrac += current_vrac_count
+                    obj.colis_count = colis
+                    obj.colis_en_palette = colis_en_palette
+                    obj.boites_en_vrac = vrac
+                obj.motif_mvnt_id = current_bon.motif_id
+                obj.origin_created_date = current_bon.created_date
+                obj.origine_created_by = current_bon.created_by
+            obj.save()
+
+    @transaction.atomic
+    def supprimer_db():
+        query = Validation.objects.values(
+            'id_in_content_type',
+            'content_type',
+            'boites_en_vrac',
+            'colis_count',
+            'colis_en_palette').distinct().annotate(myid=Min('id'))
+        liste_ids = []
+        query.count()
+        for obj in query:
+            liste_ids.append(obj['myid'])
+        q1 = HistoriqueDuTravail.objects.all()
+        for obj in q1:
+            if obj.id_validation_id not in liste_ids:
+                obj.delete()
+        q2 = Validation.objects.all()
+        for obj in q2:
+            if obj.id not in liste_ids:
+                obj.delete()
+
+    q2 = HistoriqueDuTravail.objects.values(
+        'id_validation_id',
+        'employer__code_RH',
+        'employer__nom',
+        'groupe'
+    ).filter(id_validation__created_date__range=['2016-12-21','2017-01-21'])[:20]
+    for obj in q2:
+        obj['qtt_vrac'] = ((Validation.objects.get(id=obj['id_validation_id']).boites_en_vrac)/(obj['groupe']))
+        obj['qtt_colis'] = ((Validation.objects.get(id=obj['id_validation_id']).colis_count) / (obj['groupe']))
+        obj['qtt_palette'] = ((Validation.objects.get(id=obj['id_validation_id']).colis_en_palette) / (obj['groupe']))
+        obj['motif_mouvement_stock'] = (Validation.objects.get(id=obj['id_validation_id']).motif_mvnt.type)
+        obj['nbr_lignes']= Validation.objects.get(id=obj['id_validation_id']).ligne_count/obj['groupe']
+    controle_query = Validation.objects.values(
+        'created_by__userprofile__code_rh',
+        'created_by__username',
+        'motif_mvnt__type'
+    ).filter(created_date__range=['2016-12-21', '2017-01-21']).annotate(
+        lignes=Sum('ligne_count'),
+        colis=Sum('colis_count') + Sum('colis_en_palette'),
+        boites=Sum('boites_en_vrac')
+    )
+    saisie_query = Validation.objects.values(
+        'origine_created_by__userprofile__code_rh',
+        'origine_created_by__username',
+        'motif_mvnt__type'
+    ).filter(created_date__range=['2016-12-21', '2017-01-21']).annotate(
+        lignes=Sum('ligne_count'),
+        )
     return render(request,
                   'rapport.html', {
-            'nbr_transfert': nbr_transfert,
-            'nbr_ligne_transfert': nbr_ligne_transfert,
-            'nbr__validation_transfert': nbr__validation_transfert,
-            'nbr_ligne_validation_transfert': nbr_ligne_validation_transfert,
-            'nbr_validation_achat':nbr_validation_achat,
-            'nbr_ligne_validation_achat':nbr_ligne_validation_achat
-            })
+                      'effort': Efforts,'executers':q2,'controle':controle_query,'saisie':saisie_query
+                  })

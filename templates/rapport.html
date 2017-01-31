@@ -6,61 +6,114 @@
 </head>
 <body>
 <table>
-    <th>employé</th>
-    <th>Nbr de bon créés</th>
-    {% for obj in nbr_transfert %}
+    <th>Employé  </th>
+    <th>Qtt - - -</th>
+    <th>Unité - - -</th>
+    <th>Tâche   </th>
+    {% for obj in effort %}
+        <tr>
+        {% for line in obj %}
+            <td>
+                {{ line }}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+</table>
+<table>
+<th>code RH</th>
+<th>Nom et prénom</th>
+<th>Motif du Mouvement</th>
+<th>Qtt Boites</th>
+<th>Qtt Colis</th>
+<th>Qtt Palettes</th>
+<th>NBR de lignes</th>
+{% for obj in executers %}
     <tr>
-        <td>
-            {{ obj.created_by__username }}
-        </td>
-        <td>
-            {{ obj.sum_id }}
-        </td>
-        <td>
-            {{ obj.sum_lines }}
-        </td>
+    <td>
+        {{ obj.id_validation_id }}
+    </td>
+    <td>
+        {{ obj.employer__code_RH }}
+    </td>
+    <td>
+        {{ obj.employer__nom }}
+    </td>
+    <td>
+        {{ obj.motif_mouvement_stock }}
+    </td>
+    <td>
+        {{ obj.qtt_vrac }}
+    </td>
+    <td>
+        {{ obj.qtt_colis }}
+    </td>
+    <td>
+        {{ obj.qtt_palette }}
+    </td>
+    <td>
+        {{ obj.nbr_lignes }}
+    </td>
     </tr>
     {% endfor %}
 </table>
 <table>
-    <th>Employé</th>
-    <th>Nbr de Linges créés</th>
-    {% for obj in nbr_ligne_transfert %}
+<th>code RH</th>
+<th>Nom et prénom</th>
+<th>Motif du Mouvement</th>
+<th>NBR de lignes</th>
+<th>NBR de Colis</th>
+<th>NBR de Boites</th>
+{% for obj in controle %}
     <tr>
-        <td>
-            {{ obj.created_by__username }}
-        </td>
-        <td>
-            {{ obj.sum_lines }}
-        </td>
+    <td>
+       {{ obj.created_by__userprofile__code_rh}}
+    </td>
+    <td>
+       {{ obj.created_by__username}}
+    </td>
+    <td>
+        {{ obj.motif_mvnt__type }}
+    </td>
+    <td>
+        {{ obj.lignes }}
+    </td>
+    <td>
+        {{ obj.colis }}
+    </td>
+    <td>
+        {{ obj.boites }}
+    </td>
+
     </tr>
     {% endfor %}
 </table>
 <table>
-    <th>Employé</th>
-    <th>Nbr de Bon validés</th>
-    {% for obj in nbr__validation_transfert %}
+<th>code RH</th>
+<th>Nom et prénom</th>
+<th>Motif du Mouvement</th>
+<th>NBR de lignes</th>
+{% for obj in saisie %}
     <tr>
-        <td>
-            {{ obj.validate_by__username }}
-        </td>
-        <td>
-            {{ obj.sum_id }}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-<table>
-    <th>Employé</th>
-    <th>Nbr de lignes validés</th>
-    {% for obj in nbr_ligne_validation_transfert %}
-    <tr>
-        <td>
-            {{ obj.validate_by__username }}
-        </td>
-        <td>
-            {{ obj.sum_lines }}
-        </td>
+    <td>
+       {{ obj.origine_created_by__userprofile__code_rh}}
+    </td>
+    <td>
+       {{ obj.origine_created_by__username}}
+    </td>
+    <td>
+        {{ obj.motif_mvnt__type }}
+    </td>
+    <td>
+        {{ obj.lignes }}
+    </td>
+    <td>
+        {{ obj.colis }}
+    </td>
+    <td>
+        {{ obj.boites }}
+    </td>
+
     </tr>
     {% endfor %}
 </table>

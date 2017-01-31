@@ -18,13 +18,17 @@ def commit_transaction(transaction_type=None, user=None, depuis_magasin=None, ve
             default_emplacement = Emplacement.objects.filter(magasin_id=vers_magasin).order_by('id').first()
             default_statut = StatutDocument.objects.order_by('id').first()
             reservation_details = Reservation.objects.filter(entete_tempo=entete_tempo).all()
-            if reservation_details:
+            if reservation_details.exists():
+                picking_magasin_id = Parametres.objects.get(id=1).magasin_picking_id
+                if vers_magasin == picking_magasin_id and motif == 1:  # TODO Standardissr cette clause avec paramettres
+                    motif = 5
                 new_transfert = Transfert(
                     created_by=user,
                     depuis_magasin=Magasin.objects.get(id=depuis_magasin),
                     vers_magasin=Magasin.objects.get(id=vers_magasin),
                     statut_doc=default_statut,
-                    motif_id=motif)
+                    motif_id=motif
+                )
                 new_transfert.save()
                 for item in reservation_details:
                     if vers_magasin == Parametres.objects.get(id=1).magasin_picking_id:

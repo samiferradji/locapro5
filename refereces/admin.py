@@ -5,11 +5,6 @@ from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 
 admin.site.site_title = 'LOCAPRO 5'
 admin.site.site_header = 'LOCAPRO 5'
-
-@admin.register(FormePharmaceutique)
-class FormAdmin(ImportExportModelAdmin):
-    pass
-
 admin.site.register(Axe)
 admin.site.register(Wilaya)
 admin.site.register(Commune)
@@ -40,14 +35,26 @@ class StatutsInline(admin.TabularInline):
     model = StatutsAutorise
     extra = 1
 
-class UserAdmin(AuthUserAdmin):
-   def add_view(self, *args, **kwargs):
-      self.inlines = []
-      return super(UserAdmin, self).add_view(*args, **kwargs)
+class ProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Profile'
+    fk_name = 'user'
 
-   def change_view(self, *args, **kwargs):
-      self.inlines = [DepuisMagasinsInline, VersMagasinsInline, StatutsInline]
-      return super(UserAdmin, self).change_view(*args, **kwargs)
+class UserAdmin(AuthUserAdmin):
+    list_display = ('get_code_rh','username', 'email', 'first_name', 'last_name', 'is_staff')
+    list_select_related = ('userprofile',)
+
+    def get_code_rh(self, instance):
+        return instance.userprofile.code_rh
+    get_code_rh.short_description = 'Code RH'
+    def add_view(self, *args, **kwargs):
+       self.inlines = []
+       return super(UserAdmin, self).add_view(*args, **kwargs)
+
+    def change_view(self, *args, **kwargs):
+       self.inlines = [ProfileInline, DepuisMagasinsInline, VersMagasinsInline, StatutsInline]
+       return super(UserAdmin, self).change_view(*args, **kwargs)
 
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
