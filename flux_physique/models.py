@@ -1,17 +1,30 @@
 # -*- coding: utf-8 -*-
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from refereces.models import StatutDocument, StatutProduit, Produit, Founisseur, Magasin, Emplacement, Client,\
+from refereces.models import StatutDocument, StatutProduit, Produit, Founisseur, Magasin, Emplacement, Client, \
     TypesMouvementStock, Employer, TypeEntreposage
 
 
-exercice = 2017
+class Parametres(models.Model):
+    magasin_picking = models.ForeignKey(Magasin, verbose_name='Magasin de picking')
+    emplacement_achat = models.ForeignKey(Emplacement, verbose_name='Emplacement de reception des achats')
+    exercice = models.IntegerField(verbose_name='Exercice en cours')
+    process_achat = models.ForeignKey(TypesMouvementStock, verbose_name='Processus achat', related_name='Achat')
+    process_transfer = models.ForeignKey(TypesMouvementStock, verbose_name='Processus transfert interne',
+                                         related_name='transfert_process')
+    process_entreposage = models.ForeignKey(TypesMouvementStock, verbose_name='Processus entreposage',
+                                            related_name='entreposage')
+    process_etalage = models.ForeignKey(TypesMouvementStock, verbose_name='Processus etalage', related_name='etalage')
+    process_vente_colis_complet = models.ForeignKey(TypesMouvementStock, verbose_name='Processus vente colis complets',
+                                                    related_name='vente_colis')
+
+exercice = Parametres.objects.get(id=1).exercice
 
 
 class BaseModel(models.Model):
@@ -24,7 +37,6 @@ class BaseModel(models.Model):
 
 
 class AchatsFournisseur(BaseModel):
-
     fournisseur = models.ForeignKey(Founisseur, verbose_name='Fournissur', on_delete=models.PROTECT)
     n_BL = models.CharField(max_length=15, verbose_name='Numéro de BL')
     curr_exercice = models.IntegerField(default=exercice, verbose_name='Exrcice en cours')
@@ -41,12 +53,11 @@ class AchatsFournisseur(BaseModel):
         permissions = (
             ("valider_achats", "Peut valider les achats"),
             ("voir_historique_achats", "Peut voir l'historique des achats"),
-            ("importer_achats",'Peut importer les achats'),
-            )
+            ("importer_achats", 'Peut importer les achats'),
+        )
 
 
 class DetailsAchatsFournisseur(BaseModel):
-
     entete = models.ForeignKey(AchatsFournisseur, on_delete=models.PROTECT)
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut Produit', on_delete=models.PROTECT)
     emplacement = models.ForeignKey(Emplacement, verbose_name='Emplacement', on_delete=models.PROTECT)
@@ -78,7 +89,6 @@ class CommandesClient(BaseModel):
 
 
 class DetailsCommandeClient(BaseModel):
-
     commande_client = models.ForeignKey(CommandesClient, on_delete=models.PROTECT)
     produit = models.ForeignKey(Produit, verbose_name='Produit', on_delete=models.PROTECT)
     prix_achat = models.DecimalField(max_digits=9, decimal_places=2, verbose_name="Prix d'achat HT")
@@ -137,11 +147,10 @@ class Transfert(BaseModel):
             ("voir_stock", "Peut voir l'état du stock"),
             ("exporter_stock", "Peut exporter l'état du stock"),
             ("sortie_colis_complets", "Peut fair des sorties en colis d'origine"),
-            )
+        )
 
 
 class Stock(BaseModel):
-
     id_in_content_type = models.PositiveIntegerField(verbose_name='Id Stock')
     content_type = models.PositiveIntegerField(verbose_name='Contenent_type')
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
@@ -225,7 +234,6 @@ class DetailsInventaire(BaseModel):
 
 
 class EnteteTempo(BaseModel):
-
     transaction = models.CharField(max_length=30)
 
 
@@ -248,8 +256,6 @@ class Validation(BaseModel):
     origin_created_date = models.DateTimeField(default=timezone.now)
     origine_created_by = models.ForeignKey(User, related_name='user_creat_Bon', default=2)
 
-
-
     def __str__(self):
         return ' '.join((str(self.id_in_content_type), str(self.content_type)))
 
@@ -263,17 +269,12 @@ class HistoriqueDuTravail(models.Model):
     def __str__(self):
         return ' '.join(
             (self.employer.__str__(), self.groupe.__str__(), self.type.__str__())
-                        )
+        )
 
-
-class Parametres(models.Model):
-    magasin_picking = models.ForeignKey(Magasin, verbose_name='Magasin de picking')
-    emplacement_achat = models.ForeignKey(Emplacement, verbose_name='Emplacement de reception des achats')
-    exercice = models.IntegerField(verbose_name='Exercice en cours')
 
 @receiver(post_save, sender=DetailsAchatsFournisseur, dispatch_uid="add_achats_to_stock")
 def add_achat_to_stock(sender, instance, created, **kwargs):
-    if created == True:
+    if created is True:
         new_id_stock = instance.id
         new_contenent_type = ContentType.objects.get_for_model(instance).id
         new_conformite = instance.conformite
@@ -315,7 +316,7 @@ def delete_achat_from_stock(sender, instance, **kwargs):
 @transaction.atomic
 @receiver(post_save, sender=DetailsTransfert, dispatch_uid="add_transfert_to_stock")
 def add_transfert_to_stock(sender, instance, created, **kwargs):
-    if created == True:
+    if created is True:
         new_id_stock = instance.id
         new_contenent_type = ContentType.objects.get_for_model(instance).id
         new_conformite = instance.conformite
@@ -342,10 +343,10 @@ def add_transfert_to_stock(sender, instance, created, **kwargs):
             prix_vente=new_prix_vente, taux_tva=new_taux_tva, shp=new_shp, ppa_ht=new_ppa_ht, n_lot=new_n_lot,
             date_peremption=new_date_peremption, colisage=new_colisage, poids_boite=new_poids_boite,
             volume_boite=new_volume_boite, poids_colis=new_poids_colis, qtt=new_qtt_in, motif=new_motif,
-            created_by= new_created_by
+            created_by=new_created_by
         )
 
-        new_qtt_out = -1*instance.qtt
+        new_qtt_out = -1 * instance.qtt
         new_motif = 'Transfert-Out '
         new_obj2 = Stock(
             id_in_content_type=new_id_stock, content_type=new_contenent_type,
@@ -353,10 +354,11 @@ def add_transfert_to_stock(sender, instance, created, **kwargs):
             prix_vente=new_prix_vente, taux_tva=new_taux_tva, shp=new_shp, ppa_ht=new_ppa_ht, n_lot=new_n_lot,
             date_peremption=new_date_peremption, colisage=new_colisage, poids_boite=new_poids_boite,
             volume_boite=new_volume_boite, poids_colis=new_poids_colis, qtt=new_qtt_out, motif=new_motif,
-            created_by= new_created_by
+            created_by=new_created_by
         )
         new_obj1.save()
         new_obj2.save()
+
 
 @receiver(post_delete, sender=DetailsTransfert, dispatch_uid="delete_transfert_from_stock")
 def delete_transfert_from_stock(sender, instance, **kwargs):
@@ -368,7 +370,7 @@ def delete_transfert_from_stock(sender, instance, **kwargs):
 @transaction.atomic
 @receiver(post_save, sender=DetailsFacturesClient, dispatch_uid="add_achats_to_stock")
 def add_vente_to_stock(sender, instance, created, **kwargs):
-    if created == True:
+    if created is True:
         new_id_stock = instance.id
         new_contenent_type = ContentType.objects.get_for_model(instance).id
         new_conformite = StatutProduit.objects.get(statut='Conforme')
@@ -385,7 +387,7 @@ def add_vente_to_stock(sender, instance, created, **kwargs):
         new_poids_boite = instance.produit.poids
         new_volume_boite = instance.produit.volume
         new_poids_colis = 0
-        new_qtt = -1*instance.qtt
+        new_qtt = -1 * instance.qtt
         new_motif = 'Vente'
         new_created_by = instance.created_by
         new_obj = Stock(
@@ -394,7 +396,7 @@ def add_vente_to_stock(sender, instance, created, **kwargs):
             prix_vente=new_prix_vente, taux_tva=new_taux_tva, shp=new_shp, ppa_ht=new_ppa_ht, n_lot=new_n_lot,
             date_peremption=new_date_peremption, colisage=new_colisage, poids_boite=new_poids_boite,
             volume_boite=new_volume_boite, poids_colis=new_poids_colis, qtt=new_qtt, motif=new_motif,
-            created_by= new_created_by, recu=True
+            created_by=new_created_by, recu=True
         )
         new_obj.save()
 
@@ -408,7 +410,7 @@ def delete_vente_from_stock(sender, instance, **kwargs):
 
 @receiver(post_save, sender=DetailsInventaire, dispatch_uid="add_inventaire_to_stock")
 def add_inventaire_to_stock(sender, instance, created, **kwargs):
-    if created == True:
+    if created is True:
         new_id_stock = instance.id
         new_contenent_type = ContentType.objects.get_for_model(instance).id
         new_conformite = instance.conformite
@@ -449,43 +451,47 @@ def delete_inventaire_from_stock(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Transfert, dispatch_uid="add_validation_transfert")
 def add_validation_mvt_stock(sender, instance, created, **kwargs):
-    if created == False:
+    if created is False:
         if instance.statut_doc_id == 2:
             contenent_type = ContentType.objects.get_for_model(instance).id
             id_in_content_type = instance.id
             linges_count = DetailsTransfert.objects.filter(entete=instance.id).count()
-            boites_aggregaion = DetailsTransfert.objects.filter(entete=instance.id).all()
-            total_qtt = 0
-            for obj in boites_aggregaion:
-                total_qtt += obj.qtt
+            boites_aggregaion = DetailsTransfert.objects.filter(entete=instance.id).aggregate(Sum('qtt'))
+            lignes_transfert = DetailsTransfert.objects.filter(entete=instance.id)
+            total_qtt = boites_aggregaion['qtt__sum']
+            type_mouvement = instance.motif
             created_by = instance.validate_by
-            obj = Validation(
-                content_type=contenent_type,
-                id_in_content_type=id_in_content_type,
-                ligne_count=linges_count,
-                boite_count=total_qtt,
-                created_by=created_by
-                     )
-            obj.save()
-
-
-@receiver(post_save, sender=AchatsFournisseur, dispatch_uid="add_validation_reception")
-def add_validation_reception(sender, instance, created, **kwargs):
-    if created == False:
-        if instance.statut_doc_id == 2:
-            contenent_type = ContentType.objects.get_for_model(instance).id
-            id_in_content_type = instance.id
-            linges_count = DetailsAchatsFournisseur.objects.filter(entete=instance.id).count()
-            boites_aggregaion = DetailsAchatsFournisseur.objects.filter(entete=instance.id).all()
-            total_qtt = 0
-            for obj in boites_aggregaion:
-                total_qtt += obj.qtt
-            created_by = instance.validate_by
+            colis = 0
+            colis_en_palette = 0
+            vrac = 0
+            for line in lignes_transfert:
+                if line.colisage != 0:
+                    if instance.motif in [Parametres.objects.get(id=1).process_entreposage,
+                                          Parametres.objects.get(id=1).process_etalage]:
+                        if line.vers_emplacement.type_entreposage_id == 1:
+                            vrac += line.qtt
+                        if line.vers_emplacement.type_entreposage_id == 2:
+                            vrac += line.qtt % line.colisage
+                            colis += line.qtt // line.colisage
+                        if line.vers_emplacement.type_entreposage_id == 3:
+                            vrac += line.qtt % line.colisage
+                            colis_en_palette += line.qtt // line.colisage
+                    else:
+                        if line.depuis_emplacement.type_entreposage_id == 1:
+                            vrac += line.qtt
+                        if line.depuis_emplacement.type_entreposage_id == 2:
+                            vrac += line.qtt % line.colisage
+                            colis += line.qtt // line.colisage
+                        if line.depuis_emplacement.type_entreposage_id == 3:
+                            vrac += line.qtt % line.colisage
+                            colis_en_palette += line.qtt // line.colisage
+                else:
+                    vrac += line.qtt
             validation_check = Validation.objects.filter(
                 content_type=contenent_type,
                 id_in_content_type=id_in_content_type
             )
-            if validation_check:
+            if validation_check.exists():
                 pass
             else:
                 obj = Validation(
@@ -493,6 +499,56 @@ def add_validation_reception(sender, instance, created, **kwargs):
                     id_in_content_type=id_in_content_type,
                     ligne_count=linges_count,
                     boite_count=total_qtt,
-                    created_by=created_by
-                    )
+                    boites_en_vrac=vrac,
+                    colis_count=colis,
+                    colis_en_palette=colis_en_palette,
+                    motif_mvnt=type_mouvement,
+                    created_by=created_by,
+                    origin_created_date=instance.created_date,
+                    origine_created_by=instance.created_by
+                )
+                obj.save()
+
+
+@receiver(post_save, sender=AchatsFournisseur, dispatch_uid="add_validation_reception")
+def add_validation_reception(sender, instance, created, **kwargs):
+    if created is False:
+        if instance.statut_doc_id == 2:
+            contenent_type = ContentType.objects.get_for_model(instance).id
+            id_in_content_type = instance.id
+            linges_count = DetailsAchatsFournisseur.objects.filter(entete=instance.id).count()
+            boites_aggregaion = DetailsAchatsFournisseur.objects.filter(entete=instance.id).aggregate(Sum('qtt'))
+            lignes_achat = DetailsAchatsFournisseur.objects.filter(entete=instance.id)
+            total_qtt = boites_aggregaion['qtt__sum']
+            type_mouvement = Parametres.objects.get(id=1).process_achat
+            created_by = instance.validate_by
+            colis = 0
+            colis_en_palette = 0
+            vrac = 0
+            for line in lignes_achat:
+                if line.colisage != 0:
+                    vrac += line.qtt % line.colisage
+                    colis += line.qtt // line.colisage
+                else:
+                    vrac += line.qtt
+            validation_check = Validation.objects.filter(
+                content_type=contenent_type,
+                id_in_content_type=id_in_content_type
+            )
+            if validation_check.exists():
+                pass
+            else:
+                obj = Validation(
+                    content_type=contenent_type,
+                    id_in_content_type=id_in_content_type,
+                    ligne_count=linges_count,
+                    boite_count=total_qtt,
+                    boites_en_vrac=vrac,
+                    colis_count=colis,
+                    colis_en_palette=colis_en_palette,
+                    motif_mvnt=type_mouvement,
+                    created_by=created_by,
+                    origin_created_date=instance.created_date,
+                    origine_created_by=instance.created_by
+                )
                 obj.save()

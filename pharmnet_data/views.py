@@ -10,6 +10,7 @@ from refereces.models import *
 @permission_required('flux_physique.importer_achats', raise_exception=True)
 @transaction.atomic
 def import_data(request):
+    current_exercice = Parametres.objects.get(id=1).exercice
     default_magasin_picking = Parametres.objects.get(id=1).magasin_picking
     default_emplacement_picking = Emplacement.objects.order_by('id').filter(
         magasin=default_magasin_picking).first().emplacement
@@ -90,7 +91,7 @@ def import_data(request):
                 new_date_peremption = data['LPEREMP']
                 new_colisage = data['LCOLISA']
                 new_qtt = data['LQTE']
-                new_reference_unique = ''.join(('2017', str(new_entete_achat_id), str(data['LSUIT'])))
+                new_reference_unique = ''.join((str(current_exercice), str(new_entete_achat_id), str(data['LSUIT'])))
 
                 # ******************Laboratoire**********************************
 
@@ -278,52 +279,52 @@ def import_facture_client(request):
                     )
                     facture_client.save()
                     count_entete_facture += 1
-                with open('upload_factures.dbf', 'wb+') as destination:
-                    for chunk in details_file.chunks():
-                        destination.write(chunk)
-                db = DBF("upload_factures.dbf", encoding='CP850')
-                for data in db.records:
-                    new_n_facture = data['G_NFAC']
-                    new_code_produit = data['G_CPROD']
-                    new_produit = data['G_DES0']
-                    new_prix_achat = data['G_PUNIT']
-                    new_prix_vente = data['G_DEMI']
-                    new_taux_tva = data['G_TXTVA']
-                    new_shp = data['G_SHP4']
-                    new_ppa_ht = data['G_PVU4HT']
-                    new_n_lot = data['G_NLOT']
-                    new_date_peremption = data['G_DATPER']
-                    new_colisage = data['G_COLIS']
-                    new_qtt = data['G_QTELIV']
-                    new_reference_unique = ''.join(('2017', str(new_n_facture), str(data['G_SUIT'])))
-                    if not Produit.objects.filter(code=new_code_produit).exists():
-                        emplacement_picking = default_emplacement_picking
-                        new_dci_obj = Produit(
-                            code=new_code_produit,
-                            produit=new_produit,
-                            prelevement=Emplacement.objects.get(emplacement=emplacement_picking)
-                        )
-                        new_dci_obj.save()
-                        count_produit += 1
-                    if not DetailsFacturesClient.objects.filter(ref_unique=new_reference_unique).exists():
-                        new_facture_line = DetailsFacturesClient(
-                            facture_client=FacturesClient.objects.get(n_facrure=new_n_facture),
-                            produit=Produit.objects.get(code=new_code_produit),
-                            prix_achat=new_prix_achat,
-                            prix_vente=new_prix_vente,
-                            taux_tva=new_taux_tva,
-                            shp=new_shp,
-                            ppa_ht=new_ppa_ht,
-                            n_lot=new_n_lot,
-                            date_peremption=new_date_peremption,
-                            colisage=new_colisage,
-                            qtt=new_qtt,
-                            created_by_id=user_id,
-                            ref_unique=new_reference_unique
-                        )
-                        new_facture_line.save()
-                        count_lignes_factures += 1
-                return render(
+            with open('upload_factures.dbf', 'wb+') as destination:
+                for chunk in details_file.chunks():
+                    destination.write(chunk)
+            db = DBF("upload_factures.dbf", encoding='CP850')
+            for data in db.records:
+                new_n_facture = data['G_NFAC']
+                new_code_produit = data['G_CPROD']
+                new_produit = data['G_DES0']
+                new_prix_achat = data['G_PUNIT']
+                new_prix_vente = data['G_DEMI']
+                new_taux_tva = data['G_TXTVA']
+                new_shp = data['G_SHP4']
+                new_ppa_ht = data['G_PVU4HT']
+                new_n_lot = data['G_NLOT']
+                new_date_peremption = data['G_DATPER']
+                new_colisage = data['G_COLIS']
+                new_qtt = data['G_QTELIV']
+                new_reference_unique = ''.join((str(curr_exercice), str(new_n_facture), str(data['G_SUIT'])))
+                if not Produit.objects.filter(code=new_code_produit).exists():
+                    emplacement_picking = default_emplacement_picking
+                    new_dci_obj = Produit(
+                        code=new_code_produit,
+                        produit=new_produit,
+                        prelevement=Emplacement.objects.get(emplacement=emplacement_picking)
+                    )
+                    new_dci_obj.save()
+                    count_produit += 1
+                if not DetailsFacturesClient.objects.filter(ref_unique=new_reference_unique).exists():
+                    new_facture_line = DetailsFacturesClient(
+                        facture_client=FacturesClient.objects.get(n_facrure=new_num_facture),
+                        produit=Produit.objects.get(code=new_code_produit),
+                        prix_achat=new_prix_achat,
+                        prix_vente=new_prix_vente,
+                        taux_tva=new_taux_tva,
+                        shp=new_shp,
+                        ppa_ht=new_ppa_ht,
+                        n_lot=new_n_lot,
+                        date_peremption=new_date_peremption,
+                        colisage=new_colisage,
+                        qtt=new_qtt,
+                        created_by_id=user_id,
+                        ref_unique=new_reference_unique
+                    )
+                    new_facture_line.save()
+                    count_lignes_factures += 1
+            return render(
                 request,
                 'pharmnet_data/import_factures_client_list.html',
                 {

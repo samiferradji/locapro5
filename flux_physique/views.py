@@ -1007,7 +1007,7 @@ def rapport_efforts(request):
     colis_transfert_validation = Transfert.objects.values(
         'validate_by__username',
         ).annotate(nbr_colis=Sum(F('detailstransfert__qtt') / F('detailstransfert__colisage')
-                                 )).filter(created_date__range=['2016-12-21','2017-01-21'])
+                                 )).filter(created_date__range=['2016-12-21', '2017-01-21'])
 
     for obj in entete_transfert:
         new_liste = [obj['created_by__username'], obj['sum_lines'], 'Bon', 'Création transfert']
@@ -1199,6 +1199,23 @@ def rapport_efforts(request):
         for obj in q2:
             if obj.id not in liste_ids:
                 obj.delete()
+
+    @transaction.atomic
+    def set_emplacement_type_entreposage():
+        emplacemets = Emplacement.objects.all()
+        for line in emplacemets:
+            if line.magasin_id == 1:
+                line.type_entreposage_id = 2
+            if line.magasin_id == 2:
+                line.type_entreposage_id = 3
+            if line.magasin_id == 3:
+                line.type_entreposage_id = 1
+            if line.magasin_id == 4:
+                line.type_entreposage_id = 1
+            if line.magasin_id == 5:
+                line.type_entreposage_id = 1
+            line.save()
+    set_emplacement_type_entreposage()
 
     q2 = HistoriqueDuTravail.objects.values(
         'id_validation_id',

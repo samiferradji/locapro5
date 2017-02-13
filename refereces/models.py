@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
@@ -36,7 +36,6 @@ class Client(models.Model):
     commune = models.ForeignKey(Commune, verbose_name='Commune', on_delete=models.PROTECT, null=True, blank=True)
     axe = models.ForeignKey(Axe, verbose_name='Axe de livaion', on_delete=models.PROTECT, null=True, blank=True)
     telephone = models.CharField(max_length=30, verbose_name='Téléphone', null=True, blank=True)
-
 
     def __str__(self):
         return ' '.join((self.dossier, '-', self.nom_prenom))
@@ -74,8 +73,16 @@ class Dci(models.Model):
         return ' '.join((self.code_dci, '-', self.dci, '-', self.forme_phrmaceutique.__str__(), self.dosage))
 
 
+class TypeEntreposage(models.Model):
+    type_entreposage = models.CharField(max_length=50, verbose_name="Types d'entreposage")
+
+    def __str__(self):
+        return self.type_entreposage
+
+
 class Magasin(models.Model):
     magasin = models.CharField(max_length=30, unique=True, verbose_name='Magasin')
+    type_entreposage = models.ForeignKey(TypeEntreposage, default=1, verbose_name="Type d'entreposage principal")
 
     def __str__(self):
         return self.magasin
@@ -86,9 +93,10 @@ class Emplacement(models.Model):
     magasin = models.ForeignKey(Magasin, verbose_name='Magasin', on_delete=models.PROTECT)
     volume = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Capacité en volume', null=True)
     poids = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Charge Maximale', null=True)
+    type_entreposage = models.ForeignKey(TypeEntreposage, default=1, verbose_name="Type d'entreposage")
 
     def __str__(self):
-        return ' '.join((self.emplacement, self.magasin.__str__()))
+        return ' '.join((self.emplacement, self.magasin.__str__(), '--', str(self.type_entreposage)))
 
 
 class Founisseur(models.Model):
@@ -105,13 +113,6 @@ class Laboratoire(models.Model):
 
     def __str__(self):
         return ' '.join((self.dossier, self.nom))
-
-
-class TypeEntreposage(models.Model):
-    type_entreposage = models.CharField(max_length=50, verbose_name="Types d'entreposage")
-
-    def __str__(self):
-        return self.type_entreposage
 
 
 class Produit(models.Model):
@@ -132,6 +133,7 @@ class Produit(models.Model):
     seuil_min = models.IntegerField(verbose_name='Stock Min', default=50)
     seuil_max = models.IntegerField(verbose_name='Stock MAx', default=200)
     type_entreposage = models.ForeignKey(TypeEntreposage, null=True, blank=True)
+
     def __str__(self):
         return ' '.join(
             (self.produit.__str__(), self.dci.forme_phrmaceutique.__str__(), self.dci.dosage,
@@ -170,9 +172,11 @@ class StatutsAutorise(models.Model):
     user = models.ForeignKey(User, verbose_name='Utilisateur')
     statuts = models.ForeignKey(StatutProduit, verbose_name='Statuts Autorisés')
 
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
     code_rh = models.CharField(max_length=10, verbose_name='Code RH')
+
 
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
@@ -192,5 +196,6 @@ def auto_add_emplacement_instance(sender, instance, created, **kwargs):
             magasin=magasin,
             poids=poids,
             volume=volume,
+            type_entreposage=instance.type_entreposage
             )
         obj.save()
