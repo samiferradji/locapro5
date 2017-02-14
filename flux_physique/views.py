@@ -17,7 +17,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from flux_physique.models import *
 from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm
-from flux_physique.crud import commit_transaction, validate_transaction
+from flux_physique.crud import commit_transaction, validate_transaction, compresser_stock
 from refereces.models import DepuisMagasinsAutorise, Employer
 
 
@@ -1215,7 +1215,6 @@ def rapport_efforts(request):
             if line.magasin_id == 5:
                 line.type_entreposage_id = 1
             line.save()
-    set_emplacement_type_entreposage()
 
     q2 = HistoriqueDuTravail.objects.values(
         'id_validation_id',
@@ -1245,7 +1244,8 @@ def rapport_efforts(request):
     ).filter(created_date__range=['2016-12-21', '2017-01-21']).annotate(
         lignes=Sum('ligne_count'),
         )
+    stock = compresser_stock()
     return render(request,
                   'rapport.html', {
-                      'effort': Efforts,'executers':q2,'controle':controle_query,'saisie':saisie_query
+                      'effort': Efforts,'executers':q2,'controle':controle_query,'saisie':saisie_query, 'stock':stock
                   })

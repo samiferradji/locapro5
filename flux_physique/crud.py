@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Sum
 from django.db import transaction
 from flux_physique.models import Transfert, Reservation, DetailsTransfert, EnteteTempo, Stock, HistoriqueDuTravail,\
     Validation, DetailsAchatsFournisseur, AchatsFournisseur, Parametres
@@ -233,4 +234,52 @@ def validate_transaction(type_transaction=None, id_transaction=None, created_by=
 
 
 
+@transaction.atomic
+def compresser_stock():
+    stock = Stock.objects.all().values(
+        'conformite',
+        'emplacement',
+        'produit',
+        'prix_achat',
+        'prix_vente',
+        'taux_tva',
+        'shp',
+        'ppa_ht',
+        'n_lot',
+        'date_peremption',
+        'colisage',
+        'poids_boite',
+        'volume_boite',
+        'poids_colis',
+        'recu',
+        ).annotate(sum_qtt=Sum('qtt'))
+    stock = stock.exclude(sum_qtt=0)
+    len_stock = len(stock)
+    data_to_delete = Stock.objects.all()
+    data_to_delete.delete()
+    for obj in stock:
+        new_obj = Stock(
+            id_in_content_type=1,
+            content_type=1000,
+            conformite_id=obj['conformite'],
+            emplacement_id=obj['emplacement'],
+            produit_id=obj['produit'],
+            prix_achat=obj['prix_achat'],
+            prix_vente=obj['prix_vente'],
+            taux_tva=obj['taux_tva'],
+            shp=obj['shp'],
+            ppa_ht=obj['ppa_ht'],
+            n_lot=obj['n_lot'],
+            date_peremption=obj['date_peremption'],
+            colisage=obj['colisage'],
+            poids_boite=obj['poids_boite'],
+            volume_boite=obj['volume_boite'],
+            poids_colis=obj['poids_colis'],
+            qtt=obj['sum_qtt'],
+            motif='archivage',
+            recu=obj['recu'],
+            created_by_id=1
+        )
+        new_obj.save()
 
+    return 'ok'
