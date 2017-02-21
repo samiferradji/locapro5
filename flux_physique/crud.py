@@ -232,8 +232,6 @@ def validate_transaction(type_transaction=None, id_transaction=None, created_by=
         return 'PAS OK'
 
 
-
-
 @transaction.atomic
 def compresser_stock():
     stock = Stock.objects.all().values(

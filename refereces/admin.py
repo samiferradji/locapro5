@@ -46,8 +46,9 @@ class UserAdmin(AuthUserAdmin):
     list_select_related = ('userprofile',)
 
     def get_code_rh(self, instance):
-        return instance.userprofile.code_rh
-    get_code_rh.short_description = 'Code RH'
+        return instance.userprofile.code_employee
+    get_code_rh.short_description = 'Code Employé'
+
     def add_view(self, *args, **kwargs):
        self.inlines = []
        return super(UserAdmin, self).add_view(*args, **kwargs)

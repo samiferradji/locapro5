@@ -990,46 +990,6 @@ def stock_csv(request):
 
 
 def rapport_efforts(request):
-    Efforts = []
-    entete_transfert = Transfert.objects.all().values(
-        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    entete_achat = AchatsFournisseur.objects.all().values(
-        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    lignes_transfert = DetailsTransfert.objects.all().values(
-        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    lignes_achat = DetailsAchatsFournisseur.objects.all().values(
-        'created_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    entete_transfert_validation = Transfert.objects.all().values(
-        'validate_by__username').annotate(sum_lines=Count('id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    lignes_transfert_validation = Transfert.objects.all().values(
-        'validate_by__username').annotate(sum_lines=Count(
-        'detailstransfert__id')).filter(created_date__range=['2016-12-21','2017-01-21'])
-    colis_transfert_validation = Transfert.objects.values(
-        'validate_by__username',
-        ).annotate(nbr_colis=Sum(F('detailstransfert__qtt') / F('detailstransfert__colisage')
-                                 )).filter(created_date__range=['2016-12-21', '2017-01-21'])
-
-    for obj in entete_transfert:
-        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Bon', 'Création transfert']
-        Efforts.append(new_liste)
-    for obj in entete_achat:
-        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Bon', "Création achat"]
-        Efforts.append(new_liste)
-    for obj in lignes_transfert:
-        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Lignes', "Création transfert"]
-        Efforts.append(new_liste)
-    for obj in lignes_achat:
-        new_liste = [obj['created_by__username'], obj['sum_lines'], 'Lignes', "Création achats"]
-        Efforts.append(new_liste)
-    for obj in entete_transfert_validation:
-        new_liste = [obj['validate_by__username'], obj['sum_lines'], 'Bon', "Validation transfert"]
-        Efforts.append(new_liste)
-    for obj in lignes_transfert_validation:
-        new_liste = [obj['validate_by__username'], obj['sum_lines'], 'Lignes', "Validation transfert"]
-        Efforts.append(new_liste)
-    for obj in colis_transfert_validation:
-        new_liste = [obj['validate_by__username'], obj['nbr_colis'], 'Colis', "Validation transfert"]
-        Efforts.append(new_liste)
 
     @transaction.atomic   # ajouter le type etalage avant de lancer, derniere validation 10627
     def set_entreposage():
@@ -1043,7 +1003,7 @@ def rapport_efforts(request):
     def set_etalage():
         query = Transfert.objects.all()
         for obj in query:
-            if obj.vers_magasin_id == 3 and obj.motif != 3:
+            if obj.vers_magasin_id == 3 and obj.motif_id != 3:
                 obj.motif_id = 5
                 obj.save()
 
@@ -1067,16 +1027,11 @@ def rapport_efforts(request):
                 colis_en_palette = 0
                 vrac = 0
                 for line in curent_lines:
-                    current_colis_count = 0
-                    current_vrac_count = 0
                     if line.colisage != 0:
-                        current_colis_count = line.qtt // line.colisage
-                        current_vrac_count = line.qtt % line.colisage
-                        colis += current_colis_count
-                        vrac += current_vrac_count
+                        colis += line.qtt // line.colisage
+                        vrac += line.qtt % line.colisage
                     else:
-                        current_vrac_count = line.qtt
-                        vrac += current_vrac_count
+                        vrac += line.qtt
                 obj.colis_count = colis
                 obj.colis_en_palette = colis_en_palette
                 obj.boites_en_vrac = vrac
@@ -1093,87 +1048,35 @@ def rapport_efforts(request):
             if obj.content_type == 31:  # transfert
                 current_bon = Transfert.objects.get(id=obj.id_in_content_type)
                 curent_lines = DetailsTransfert.objects.filter(entete=current_bon.id)
-                if current_bon.motif_id == 1:
-                    colis = 0
-                    colis_en_palette = 0
-                    vrac = 0
-                    for line in curent_lines:
-                        current_colis_count = 0
-                        current_vrac_count = 0
-                        if line.colisage != 0:
-                            current_colis_count = line.qtt // line.colisage
-                            current_vrac_count = line.qtt % line.colisage
-                            colis += current_colis_count
-                            vrac += current_vrac_count
+                colis = 0
+                colis_en_palette = 0
+                vrac = 0
+                for line in curent_lines:
+                    if line.colisage != 0:
+                        if current_bon.motif in [Parametres.objects.get(id=1).process_entreposage,
+                                              Parametres.objects.get(id=1).process_etalage]:
+                            if line.vers_emplacement.type_entreposage_id == 1:
+                                vrac += line.qtt
+                            if line.vers_emplacement.type_entreposage_id == 2:
+                                vrac += line.qtt % line.colisage
+                                colis += line.qtt // line.colisage
+                            if line.vers_emplacement.type_entreposage_id == 3:
+                                vrac += line.qtt % line.colisage
+                                colis_en_palette += line.qtt // line.colisage
                         else:
-                            current_vrac_count = line.qtt
-                            vrac += current_vrac_count
-                    obj.colis_count = colis
-                    obj.colis_en_palette = colis_en_palette
-                    obj.boites_en_vrac = vrac
-                if current_bon.motif_id == 3:
-                    colis = 0
-                    colis_en_palette = 0
-                    vrac = 0
-                    for line in curent_lines:
-                        current_colis_count = 0
-                        current_vrac_count = 0
-                        if line.colisage != 0:
-                            current_colis_count = line.qtt // line.colisage
-                            current_vrac_count = line.qtt % line.colisage
-                            colis += current_colis_count
-                            vrac += current_vrac_count
-                        else:
-                            current_vrac_count = line.qtt
-                            vrac += current_vrac_count
-                    obj.colis_count = colis
-                    obj.colis_en_palette = colis_en_palette
-                    obj.boites_en_vrac = vrac
-                if current_bon.motif_id == 4:
-                    colis = 0
-                    colis_en_palette = 0
-                    vrac = 0
-                    for line in curent_lines:
-                        current_colis_count = 0
-                        current_vrac_count = 0
-                        if line.colisage != 0:
-                            current_colis_count = line.qtt // line.colisage
-                            current_vrac_count = line.qtt % line.colisage
-                            colis += current_colis_count
-                            vrac += current_vrac_count
-                        else:
-                            current_vrac_count = line.qtt
-                            vrac += current_vrac_count
-                    obj.colis_count = colis
-                    obj.colis_en_palette = colis_en_palette
-                    obj.boites_en_vrac = vrac
-                if current_bon.motif_id == 5:
-                    colis = 0
-                    colis_en_palette = 0
-                    vrac = 0
-                    for line in curent_lines:
-                        current_colis_count = 0
-                        current_vrac_count = 0
-                        if line.colisage != 0:
-                            if line.produit.type_entreposage_id == 1:
-                                current_vrac_count = line.qtt
-                                vrac += current_vrac_count
-                            if line.produit.type_entreposage_id == 2:
-                                current_colis_count = line.qtt // line.colisage
-                                current_vrac_count = line.qtt % line.colisage
-                                colis += current_colis_count
-                                vrac += current_vrac_count
-                            if line.produit.type_entreposage_id == 3:
-                                current_colis_count = line.qtt // line.colisage
-                                current_vrac_count = line.qtt % line.colisage
-                                colis_en_palette += current_colis_count
-                                vrac += current_vrac_count
-                        else:
-                            current_vrac_count = line.qtt
-                            vrac += current_vrac_count
-                    obj.colis_count = colis
-                    obj.colis_en_palette = colis_en_palette
-                    obj.boites_en_vrac = vrac
+                            if line.depuis_emplacement.type_entreposage_id == 1:
+                                vrac += line.qtt
+                            if line.depuis_emplacement.type_entreposage_id == 2:
+                                vrac += line.qtt % line.colisage
+                                colis += line.qtt // line.colisage
+                            if line.depuis_emplacement.type_entreposage_id == 3:
+                                vrac += line.qtt % line.colisage
+                                colis_en_palette += line.qtt // line.colisage
+                    else:
+                        vrac += line.qtt
+                obj.boites_en_vrac = vrac
+                obj.colis_count = colis
+                obj.colis_en_palette = colis_en_palette
                 obj.motif_mvnt_id = current_bon.motif_id
                 obj.origin_created_date = current_bon.created_date
                 obj.origine_created_by = current_bon.created_by
@@ -1184,9 +1087,7 @@ def rapport_efforts(request):
         query = Validation.objects.values(
             'id_in_content_type',
             'content_type',
-            'boites_en_vrac',
-            'colis_count',
-            'colis_en_palette').distinct().annotate(myid=Min('id'))
+            ).distinct().annotate(myid=Min('id'))
         liste_ids = []
         query.count()
         for obj in query:
@@ -1216,36 +1117,5 @@ def rapport_efforts(request):
                 line.type_entreposage_id = 1
             line.save()
 
-    q2 = HistoriqueDuTravail.objects.values(
-        'id_validation_id',
-        'employer__code_RH',
-        'employer__nom',
-        'groupe'
-    ).filter(id_validation__created_date__range=['2016-12-21','2017-01-21'])[:20]
-    for obj in q2:
-        obj['qtt_vrac'] = ((Validation.objects.get(id=obj['id_validation_id']).boites_en_vrac)/(obj['groupe']))
-        obj['qtt_colis'] = ((Validation.objects.get(id=obj['id_validation_id']).colis_count) / (obj['groupe']))
-        obj['qtt_palette'] = ((Validation.objects.get(id=obj['id_validation_id']).colis_en_palette) / (obj['groupe']))
-        obj['motif_mouvement_stock'] = (Validation.objects.get(id=obj['id_validation_id']).motif_mvnt.type)
-        obj['nbr_lignes']= Validation.objects.get(id=obj['id_validation_id']).ligne_count/obj['groupe']
-    controle_query = Validation.objects.values(
-        'created_by__userprofile__code_rh',
-        'created_by__username',
-        'motif_mvnt__type'
-    ).filter(created_date__range=['2016-12-21', '2017-01-21']).annotate(
-        lignes=Sum('ligne_count'),
-        colis=Sum('colis_count') + Sum('colis_en_palette'),
-        boites=Sum('boites_en_vrac')
-    )
-    saisie_query = Validation.objects.values(
-        'origine_created_by__userprofile__code_rh',
-        'origine_created_by__username',
-        'motif_mvnt__type'
-    ).filter(created_date__range=['2016-12-21', '2017-01-21']).annotate(
-        lignes=Sum('ligne_count'),
-        )
-    stock = compresser_stock()
     return render(request,
-                  'rapport.html', {
-                      'effort': Efforts,'executers':q2,'controle':controle_query,'saisie':saisie_query, 'stock':stock
-                  })
+                  'rapport.html')

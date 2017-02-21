@@ -24,7 +24,7 @@ class Parametres(models.Model):
     process_vente_colis_complet = models.ForeignKey(TypesMouvementStock, verbose_name='Processus vente colis complets',
                                                     related_name='vente_colis')
 
-exercice = Parametres.objects.get(id=1).exercice
+exercice = 2017 #Parametres.objects.get(id=1).exercice
 
 
 class BaseModel(models.Model):

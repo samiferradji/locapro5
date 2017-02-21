@@ -84,9 +84,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'locapro_svgd',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',
+        'USER': 'remote_user',
+        'PASSWORD': 'Toxico2000',
+        'HOST': '172.16.5.12',
         }
 }
 

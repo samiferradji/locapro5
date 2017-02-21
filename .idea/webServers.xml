@@ -2,12 +2,12 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="f9ff1536-2ccb-447d-bcec-2e1faca0434e" name="sami" url="http://127.0.0.1">
-        <fileTransfer host="127.0.0.1" port="80" rootFolder="/d:\projects">
+      <webServer id="7f6e7ac7-a7bb-4151-a339-adc191804546" name="wms" url="http://172.16.5.12">
+        <fileTransfer host="172.16.5.12" port="22" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>
-          <option name="port" value="80" />
+          <option name="port" value="22" />
         </fileTransfer>
       </webServer>
     </option>

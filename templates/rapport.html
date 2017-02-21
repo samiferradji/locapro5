@@ -93,27 +93,20 @@
 <th>Nom et prénom</th>
 <th>Motif du Mouvement</th>
 <th>NBR de lignes</th>
-{% for obj in saisie %}
+{% for obj in test %}
     <tr>
     <td>
-       {{ obj.origine_created_by__userprofile__code_rh}}
+       {{ obj.mycount}}
     </td>
     <td>
-       {{ obj.origine_created_by__username}}
+       {{ obj.myid}}
     </td>
     <td>
-        {{ obj.motif_mvnt__type }}
+       {{ obj.id_in_content_type}}
     </td>
     <td>
-        {{ obj.lignes }}
+       {{ obj.content_type}}
     </td>
-    <td>
-        {{ obj.colis }}
-    </td>
-    <td>
-        {{ obj.boites }}
-    </td>
-
     </tr>
     {% endfor %}
 </table>

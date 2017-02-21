@@ -154,8 +154,11 @@ class Employer(models.Model):
     code_RH = models.CharField(max_length=10, verbose_name='Code RH', unique=True)
     nom = models.CharField(max_length=50, verbose_name='Nom et prénom')
 
+    class Meta:
+        ordering = ['nom', ]
+
     def __str__(self):
-        return ' '.join((self.code_RH, self.nom))
+        return ' '.join((self.nom,self.code_RH))
 
 
 class DepuisMagasinsAutorise(models.Model):
@@ -175,7 +178,7 @@ class StatutsAutorise(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
-    code_rh = models.CharField(max_length=10, verbose_name='Code RH')
+    code_employee = models.ForeignKey(Employer, verbose_name='Code Employé')
 
 
 @receiver(post_save, sender=User)
