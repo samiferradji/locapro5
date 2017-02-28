@@ -26,7 +26,7 @@ class Commune(models.Model):
     wilaya = models.ForeignKey(Wilaya, verbose_name='Wilaya', on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
-        return ' '.join((self.code_commune.__str__(), self.commune, '--', self.wilaya.__str__()))
+        return self.commune
 
 
 class Client(models.Model):
@@ -70,7 +70,7 @@ class Dci(models.Model):
     dosage = models.CharField(max_length=20, verbose_name='Dosage')
 
     def __str__(self):
-        return ' '.join((self.code_dci, '-', self.dci, '-', self.forme_phrmaceutique.__str__(), self.dosage))
+        return self.code_dci
 
 
 class TypeEntreposage(models.Model):
@@ -135,10 +135,7 @@ class Produit(models.Model):
     type_entreposage = models.ForeignKey(TypeEntreposage, null=True, blank=True)
 
     def __str__(self):
-        return ' '.join(
-            (self.produit.__str__(), self.dci.forme_phrmaceutique.__str__(), self.dci.dosage,
-             self.conditionnement)
-                        )
+        return self.produit
 
 
 class TypesMouvementStock(models.Model):

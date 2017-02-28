@@ -1053,8 +1053,8 @@ def rapport_efforts(request):
                 vrac = 0
                 for line in curent_lines:
                     if line.colisage != 0:
-                        if current_bon.motif in [Parametres.objects.get(id=1).process_entreposage,
-                                              Parametres.objects.get(id=1).process_etalage]:
+                        if current_bon.motif_id in [Parametres.objects.get(id=1).process_entreposage_id,
+                                              Parametres.objects.get(id=1).process_etalage_id]:
                             if line.vers_emplacement.type_entreposage_id == 1:
                                 vrac += line.qtt
                             if line.vers_emplacement.type_entreposage_id == 2:
@@ -1117,5 +1117,15 @@ def rapport_efforts(request):
                 line.type_entreposage_id = 1
             line.save()
 
+    @transaction.atomic
+    def correct_type_emplacement():
+        produit = Produit.objects.all()
+        for obj in produit:
+            if obj.type_entreposage_id in  [2,3]:
+                empl_id = obj.prelevement_id
+                empl_obj = Emplacement.objects.get(id=empl_id)
+                empl_obj.type_entreposage_id = obj.type_entreposage_id
+                empl_obj.save()
+    set_validation_transfert()
     return render(request,
                   'rapport.html')

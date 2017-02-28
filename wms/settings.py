@@ -41,7 +41,9 @@ INSTALLED_APPS = (
     'refereces',
     'import_export',
     'flux_physique',
+    'pharmnet_data',
     'django_ajax',
+    'ajax_select',
     )
 
 MIDDLEWARE_CLASSES = (
@@ -84,9 +86,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'locapro_svgd',
-        'USER': 'remote_user',
-        'PASSWORD': 'Toxico2000',
-        'HOST': '172.16.5.12',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',
         }
 }
 
