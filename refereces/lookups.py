@@ -1,9 +1,10 @@
 from ajax_select import register, LookupChannel
-from .models import Emplacement, Dci, Client, Commune, Employer
+from .models import Emplacement, Dci, Client, Commune, Employer, Produit
+from flux_physique.models import Transfert
 
 
 @register('emplacements')
-class TagsLookup(LookupChannel):
+class EmplacementLookup(LookupChannel):
 
     model = Emplacement
 
@@ -18,7 +19,7 @@ class TagsLookup(LookupChannel):
 
 
 @register('dcis')
-class TagsLookup(LookupChannel):
+class DciLookup(LookupChannel):
 
     model = Dci
 
@@ -30,9 +31,9 @@ class TagsLookup(LookupChannel):
 
 
 @register('clients')
-class TagsLookup(LookupChannel):
+class ClientLookup(LookupChannel):
 
-    model = Dci
+    model = Client
 
     def get_query(self, q, request):
         return self.model.objects.filter(client__icontains=q).order_by('client')[:25]
@@ -42,7 +43,7 @@ class TagsLookup(LookupChannel):
 
 
 @register('communes')
-class TagsLookup(LookupChannel):
+class CommuneLookup(LookupChannel):
 
     model = Commune
 
@@ -54,12 +55,36 @@ class TagsLookup(LookupChannel):
 
 
 @register('employees')
-class TagsLookup(LookupChannel):
+class EmployeeLookup(LookupChannel):
 
-    model = Commune
+    model = Employer
 
     def get_query(self, q, request):
         return self.model.objects.filter(nom__icontains=q).order_by('commune')[:25]
 
     def format_match(self, obj):
         return u"<span class='tag'>%s</span>" % obj.nom
+
+
+@register('produits')
+class ProduitLookup(LookupChannel):
+
+    model = Produit
+
+    def get_query(self, q, request):
+        return self.model.objects.filter(produit__icontains=q).order_by('produit')[:25]
+
+    def format_match(self, obj):
+        return u"<span class='tag'>%s</span>" % obj.produit
+
+
+@register('transfers')
+class TransfertLookup(LookupChannel):
+
+    model = Transfert
+
+    def get_query(self, q, request):
+        return self.model.objects.filter(id__icontains=q).order_by('id')[:25]
+
+    def format_match(self, obj):
+        return u"<span class='tag'>%s</span>" % obj.id

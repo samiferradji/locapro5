@@ -63,7 +63,7 @@ admin.site.register(User, UserAdmin)
 
 
 @admin.register(Produit)
-class YourModelAdmin(admin.ModelAdmin):
+class ProduitModelAdmin(admin.ModelAdmin):
 
     form = make_ajax_form(Produit, {
         'prelevement': 'emplacements',
@@ -76,7 +76,7 @@ class YourModelAdmin(admin.ModelAdmin):
 
 
 @admin.register(Client)
-class YourModelAdmin(AjaxSelectAdmin):
+class ClientModelAdmin(AjaxSelectAdmin):
 
     form = make_ajax_form(Client, {
         'commune': 'communes',
@@ -87,7 +87,7 @@ class YourModelAdmin(AjaxSelectAdmin):
 
 
 @admin.register(Commune)
-class YourModelAdmin(admin.ModelAdmin):
+class CommuneModelAdmin(admin.ModelAdmin):
 
     list_display = ('code_commune', 'commune', 'wilaya')
     list_per_page = 30
@@ -95,7 +95,7 @@ class YourModelAdmin(admin.ModelAdmin):
 
 
 @admin.register(Dci)
-class YourModelAdmin(AjaxSelectAdmin):
+class DciModelAdmin(AjaxSelectAdmin):
 
     list_display = ('code_dci', 'dci', 'forme_phrmaceutique', 'dosage')
     list_per_page = 30
@@ -103,7 +103,7 @@ class YourModelAdmin(AjaxSelectAdmin):
 
 
 @admin.register(Emplacement)
-class YourModelAdmin(AjaxSelectAdmin):
+class EmplacementModelAdmin(AjaxSelectAdmin):
 
     list_display = ('emplacement', 'magasin', 'type_entreposage', 'poids', 'volume',)
     list_per_page = 30

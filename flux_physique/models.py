@@ -232,6 +232,9 @@ class DetailsInventaire(BaseModel):
     poids_colis = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Poids du Colis')
     qtt = models.IntegerField(verbose_name='Quantité')
 
+    def __str__(self):
+        return self.id
+
 
 class EnteteTempo(BaseModel):
     transaction = models.CharField(max_length=30)

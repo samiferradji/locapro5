@@ -1,5 +1,7 @@
+from ajax_select import make_ajax_form
 from django.contrib import admin
 from flux_physique.models import *
+
 
 class StockAdmin(admin.ModelAdmin):
     list_display = (
@@ -10,13 +12,17 @@ class StockAdmin(admin.ModelAdmin):
     search_fields = ['produit__produit', 'n_lot', 'ppa_ht']
 
 
+@admin.register(DetailsTransfert)
 class DetailsTransfertAdmin(admin.ModelAdmin):
     list_display = (
-        'produit','prix_achat','prix_vente','n_lot','date_peremption','colisage',
-        'taux_tva','shp','ppa_ht','depuis_emplacement','conformite', 'qtt','vers_emplacement'
-    )
-    list_per_page = 20
-    search_fields = ['produit__produit','n_lot','ppa_ht']
+        'id', )
+    list_per_page = 30
+    #search_fields = ['produit__produit','n_lot','ppa_ht']
+    form = make_ajax_form(DetailsTransfert, {
+        'produit': 'produits',
+        'entete': 'transfers'
+
+        })
 
 
 class DetailsFacturesClientsAdmin(admin.ModelAdmin):
@@ -64,7 +70,6 @@ admin.site.register(DetailsCommandeClient)
 admin.site.register(FacturesClient, FacturesClientsAdmin)
 admin.site.register(DetailsFacturesClient, DetailsFacturesClientsAdmin)
 admin.site.register(Transfert, TransfertAdmin)
-admin.site.register(DetailsTransfert, DetailsTransfertAdmin)
 admin.site.register(Stock, StockAdmin)
 admin.site.register(Reservation)
 admin.site.register(Inventaire)
