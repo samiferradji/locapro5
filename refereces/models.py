@@ -96,7 +96,7 @@ class Emplacement(models.Model):
     type_entreposage = models.ForeignKey(TypeEntreposage, default=1, verbose_name="Type d'entreposage")
 
     def __str__(self):
-        return ' '.join((self.emplacement, self.magasin.__str__(), '--', str(self.type_entreposage)))
+        return ' '.join((self.emplacement, self.magasin.magasin))
 
 
 class Founisseur(models.Model):

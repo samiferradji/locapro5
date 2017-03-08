@@ -12,10 +12,10 @@ class EmplacementLookup(LookupChannel):
         return self.model.objects.filter(emplacement__icontains=q).order_by('emplacement')[:25]
 
     def format_item_display(self, item):
-        return u"<span class='tag'>%s</span>" % item.emplacement
+        return u"<span class='tag'>%s</span>" % ' '.join((item.emplacement, str(item.magasin)))
 
     def format_match(self, obj):
-        return u"<span class='tag'>%s</span>" % obj.emplacement
+        return u"<span class='tag'>%s</span>" % ' '.join((obj.emplacement, str(obj.magasin)))
 
 
 @register('dcis')
@@ -78,7 +78,7 @@ class ProduitLookup(LookupChannel):
         return u"<span class='tag'>%s</span>" % obj.produit
 
 
-@register('transfers')
+@register('transferts')
 class TransfertLookup(LookupChannel):
 
     model = Transfert

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from PyInstaller.lib.macholib.mach_o import encryption_info_command
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Sum
@@ -76,9 +77,6 @@ class DetailsAchatsFournisseur(BaseModel):
     qtt = models.IntegerField(verbose_name='Quantité')
     ref_unique = models.CharField(max_length=20, verbose_name='reference_unique', default=0)
 
-    def __str__(self):
-        return self.produit.__str__()
-
 
 class CommandesClient(BaseModel):
     curr_exercice = models.IntegerField(default=exercice, verbose_name='Exrcice en cours')
@@ -137,6 +135,9 @@ class Transfert(BaseModel):
     statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du document', on_delete=models.PROTECT)
     motif = models.ForeignKey(TypesMouvementStock, verbose_name='Motif du mouvement', default=1)
     validate_by = models.ForeignKey(User, null=True, blank=True, related_name='validation_name')
+
+    def __str__(self):
+        return str(self.id)
 
     class Meta:
         permissions = (
@@ -233,7 +234,7 @@ class DetailsInventaire(BaseModel):
     qtt = models.IntegerField(verbose_name='Quantité')
 
     def __str__(self):
-        return self.id
+        return str(self.id)
 
 
 class EnteteTempo(BaseModel):
@@ -555,3 +556,15 @@ def add_validation_reception(sender, instance, created, **kwargs):
                     origine_created_by=instance.created_by
                 )
                 obj.save()
+
+
+@receiver(post_save, sender=Inventaire, dispatch_uid="add_validation_inventaire")
+def add_validation_inventaire(sender, instance, created, **kwargs):
+    if created is False:
+        if instance.statut_doc_id == 2:
+            contenent_type = ContentType.objects.get_for_model(DetailsInventaire).id
+            lignes_inventaire = DetailsInventaire.objects.filter(entete=instance.id)
+            for item in lignes_inventaire:
+                stock_item = Stock.objects.get(id_in_content_type=item.id, content_type=contenent_type)
+                stock_item.recu = True
+                stock_item.save()

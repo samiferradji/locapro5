@@ -281,3 +281,44 @@ def compresser_stock():
         new_obj.save()
 
     return 'ok'
+
+
+@transaction.atomic
+def compresser_stock2():
+    stock = Stock.objects.all().values(
+        'conformite',
+        'produit',
+        #'prix_achat',
+        #'prix_vente',
+        #'taux_tva',
+        #'shp',
+        #'ppa_ht',
+        'n_lot',
+        #'date_peremption',
+        #'colisage',
+        #'poids_boite',
+        #'volume_boite',
+        #'poids_colis',
+        'recu',
+        ).annotate(sum_qtt=Sum('qtt'))
+    stock_c = stock.filter(sum_qtt=0)
+    for obj in stock_c:
+        new_obj = Stock.objects.filter(
+            conformite_id=obj['conformite'],
+            produit_id=obj['produit'],
+            #prix_achat=obj['prix_achat'],
+            #prix_vente=obj['prix_vente'],
+            #taux_tva=obj['taux_tva'],
+            #shp=obj['shp'],
+            #ppa_ht=obj['ppa_ht'],
+            n_lot=obj['n_lot'],
+            #date_peremption=obj['date_peremption'],
+            #colisage=obj['colisage'],
+            #poids_boite=obj['poids_boite'],
+            #volume_boite=obj['volume_boite'],
+            #poids_colis=obj['poids_colis'],
+            recu=obj['recu'],
+            )
+        new_obj.delete()
+
+    return 'ok'

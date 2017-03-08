@@ -17,7 +17,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from flux_physique.models import *
 from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm
-from flux_physique.crud import commit_transaction, validate_transaction, compresser_stock
+from flux_physique.crud import commit_transaction, validate_transaction, compresser_stock, compresser_stock2
 from refereces.models import DepuisMagasinsAutorise, Employer
 
 
@@ -441,7 +441,7 @@ def stock_disponible(request):
     current_magasin = request.GET.get('current_magasin', None)
     user = request.user.id
     current_status_produit = StatutProduit.objects.filter(statutsautorise__user_id=user).values_list('id')
-    queryset = Stock.objects.values(
+    queryset = Stock.objects.select_related().values(
         'produit__produit',
         'produit__dci__dosage',
         'produit__dci__forme_phrmaceutique__forme',
@@ -539,7 +539,7 @@ def qtt_disponible(request):  # aficher les produits disponibles pour le transfe
     id_stock = int(request.GET['current_id_stock'])
     obj_stock = Stock.objects.get(id=id_stock)
     if id_stock:
-        queryset = Stock.objects.values(
+        queryset = Stock.objects.select_related().values(
             'n_lot',
             'date_peremption',
             'ppa_ht',
@@ -1126,6 +1126,6 @@ def rapport_efforts(request):
                 empl_obj = Emplacement.objects.get(id=empl_id)
                 empl_obj.type_entreposage_id = obj.type_entreposage_id
                 empl_obj.save()
-    set_validation_transfert()
+    
     return render(request,
                   'rapport.html')
