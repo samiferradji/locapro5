@@ -1126,6 +1126,6 @@ def rapport_efforts(request):
                 empl_obj = Emplacement.objects.get(id=empl_id)
                 empl_obj.type_entreposage_id = obj.type_entreposage_id
                 empl_obj.save()
-    
+
     return render(request,
                   'rapport.html')

@@ -5,6 +5,13 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
+class Filiale(models.Model):
+    filiale = models.CharField(max_length=30, verbose_name='Nom de la filiale')
+    prefix_filiale = models.CharField(max_length=10, verbose_name='Préfix de codification')
+
+    def __str__(self):
+        return self.filiale
+
 class Axe(models.Model):
     axe = models.CharField(max_length=50, verbose_name='Axe de livraion', unique=True)
 
@@ -83,6 +90,7 @@ class TypeEntreposage(models.Model):
 class Magasin(models.Model):
     magasin = models.CharField(max_length=30, unique=True, verbose_name='Magasin')
     type_entreposage = models.ForeignKey(TypeEntreposage, default=1, verbose_name="Type d'entreposage principal")
+    filiale = models.ForeignKey(Filiale, verbose_name='Filiale')
 
     def __str__(self):
         return self.magasin
@@ -140,8 +148,12 @@ class Produit(models.Model):
 
 class TypesMouvementStock(models.Model):
     type = models.CharField(max_length=50, unique=True, verbose_name='Type du mouvement')
-    niveau = models.SmallIntegerField(verbose_name='Niveau de difficulté')
-    description = models.TextField(verbose_name='Description du mouvement', null=True)
+    niveau = models.SmallIntegerField(verbose_name='Niveau de difficulté', null=True, blank=True)
+    description = models.TextField(verbose_name='Description du mouvement', null=True, blank=True)
+    point_ligne = models.SmallIntegerField(verbose_name='Points par ligne', null=True, blank=True)
+    point_boite = models.SmallIntegerField(verbose_name='Points par boites', null=True, blank=True)
+    point_colis = models.SmallIntegerField(verbose_name='Points par colis', null=True, blank=True)
+    point_colis_palettise = models.SmallIntegerField(verbose_name='Point par colis palettisés', null=True, blank=True)
 
     def __str__(self):
         return self.type

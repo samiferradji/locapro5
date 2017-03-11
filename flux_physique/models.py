@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyInstaller.lib.macholib.mach_o import encryption_info_command
+import datetime
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Sum
@@ -9,13 +9,20 @@ from django.db import transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from refereces.models import StatutDocument, StatutProduit, Produit, Founisseur, Magasin, Emplacement, Client, \
-    TypesMouvementStock, Employer, TypeEntreposage
+    TypesMouvementStock, Employer, TypeEntreposage, Filiale
+
+
+def get_current_year():
+    current_year = datetime.datetime.now().year
+    return current_year
+
+exercice = get_current_year()
 
 
 class Parametres(models.Model):
+    filiale = models.ForeignKey(Filiale, verbose_name='Filiale')
     magasin_picking = models.ForeignKey(Magasin, verbose_name='Magasin de picking')
     emplacement_achat = models.ForeignKey(Emplacement, verbose_name='Emplacement de reception des achats')
-    exercice = models.IntegerField(verbose_name='Exercice en cours')
     process_achat = models.ForeignKey(TypesMouvementStock, verbose_name='Processus achat', related_name='Achat')
     process_transfer = models.ForeignKey(TypesMouvementStock, verbose_name='Processus transfert interne',
                                          related_name='transfert_process')
@@ -23,9 +30,8 @@ class Parametres(models.Model):
                                             related_name='entreposage')
     process_etalage = models.ForeignKey(TypesMouvementStock, verbose_name='Processus etalage', related_name='etalage')
     process_vente_colis_complet = models.ForeignKey(TypesMouvementStock, verbose_name='Processus vente colis complets',
-                                                    related_name='vente_colis')
 
-exercice = 2017 #Parametres.objects.get(id=1).exercice
+                                                    related_name='vente_colis')
 
 
 class BaseModel(models.Model):
@@ -274,6 +280,35 @@ class HistoriqueDuTravail(models.Model):
         return ' '.join(
             (self.employer.__str__(), self.groupe.__str__(), self.type.__str__())
         )
+
+
+class TransfertsEntreFiliale(BaseModel):
+    original_id = models.PositiveIntegerField(verbose_name='transfert original')
+    depuis_filiale = models.ForeignKey(Filiale, verbose_name='Depuis filiale', related_name='depui_filiale',
+                                       on_delete=models.PROTECT)
+    vers_filiale = models.ForeignKey(Filiale, verbose_name='Vers filiale', on_delete=models.PROTECT)
+    statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
+
+    def __str__(self):
+        return str(self.id)
+
+
+class DetailsTransfertEntreFiliale(BaseModel):
+    entete = models.ForeignKey(TransfertsEntreFiliale, on_delete=models.PROTECT)
+    conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
+    produit = models.ForeignKey(Produit, verbose_name='Produit', on_delete=models.PROTECT)
+    prix_achat = models.DecimalField(max_digits=9, decimal_places=2, verbose_name="Achat HT")
+    prix_vente = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='Vente HT')
+    taux_tva = models.IntegerField(verbose_name='TVA')
+    shp = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='SHP')
+    ppa_ht = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='PPA')
+    n_lot = models.CharField(max_length=20, verbose_name='Lot')
+    date_peremption = models.DateField(verbose_name='DDP')
+    colisage = models.IntegerField(verbose_name='Colisage')
+    poids_boite = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Poids boite')
+    volume_boite = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Volume boite')
+    poids_colis = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Poids du Colis')
+    qtt = models.IntegerField(verbose_name='Quantité')
 
 
 @receiver(post_save, sender=DetailsAchatsFournisseur, dispatch_uid="add_achats_to_stock")
@@ -568,3 +603,40 @@ def add_validation_inventaire(sender, instance, created, **kwargs):
                 stock_item = Stock.objects.get(id_in_content_type=item.id, content_type=contenent_type)
                 stock_item.recu = True
                 stock_item.save()
+
+
+@receiver(post_save, sender=Transfert, dispatch_uid="add_transfert_entre_filiale")
+def add_transfert_entre_filiale(sender, instance, created, **kwargs):
+    if created is False:
+        if instance.vers_magasin.filiale != Parametres.filiale:
+            if instance.statut_doc_id == 2:
+                if TransfertsEntreFiliale.objects.filter(original_id=instance.id).exists():
+                    pass
+                else:
+                    details_transfert = DetailsTransfert.objects.filter(entete=instance.id).all()
+                    new_obj = TransfertsEntreFiliale(
+                        original_id=instance.id,
+                        depuis_filiale=instance.depuis_magasin.filiale,
+                        vers_filiale=instance.vers_magasin.filiale,
+                        statut_doc_id=1
+                    )
+                    new_obj.save()
+                    for obj in details_transfert:
+                        obj = DetailsTransfertEntreFiliale(
+                            entete=new_obj.id,
+                            conformite=obj.conformite,
+                            produit=obj.produit,
+                            prix_achat=obj.prix_achat,
+                            prix_vente=obj.prix_vente,
+                            taux_tva=obj.taux_tva,
+                            shp=obj.shp,
+                            ppa_ht=obj.ppa_ht,
+                            n_lot=obj.n_lot,
+                            date_peremption=obj.date_peremption,
+                            colisage=obj.colisage,
+                            poids_boite=obj.poids_boite,
+                            volume_boite=obj.volume_boite,
+                            poids_colis=obj.poids_colis,
+                            qtt=obj.qtt
+                        )
+                        obj.save()
