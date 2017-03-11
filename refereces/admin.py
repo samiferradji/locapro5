@@ -17,7 +17,8 @@ admin.site.register(Laboratoire)
 admin.site.register(TypesMouvementStock)
 admin.site.register(Employer)
 admin.site.register(TypeEntreposage)
-
+admin.site.register(FormePharmaceutique)
+admin.site.register(Filiale)
 
 class DepuisMagasinsInline(admin.TabularInline):
     model = DepuisMagasinsAutorise

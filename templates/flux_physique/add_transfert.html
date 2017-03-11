@@ -324,7 +324,7 @@
                     $('#cg').combogrid({
                         'onHidePanel': function () {
                             var current_id_stock = $('#cg').combogrid('getValue');
-                            var current_id_stock_int = parseInt(current_id_stock, 10);
+                            var current_id_stock_int = current_id_stock;
                             $.getJSON("/qtt-disponible/",
                                 {
                                     current_id_stock: current_id_stock_int,

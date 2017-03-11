@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from refereces.models import StatutDocument, StatutProduit, Produit, Founisseur, Magasin, Emplacement, Client, \
     TypesMouvementStock, Employer, TypeEntreposage, Filiale
+from shared_data.models import GlobalMotifsInventaire, GlobalTransfertsEntreFiliale, GlobalDetailsTransfertEntreFiliale
 
 
 def get_current_year():
@@ -294,6 +295,7 @@ class TransfertsEntreFiliale(BaseModel):
 
 
 class DetailsTransfertEntreFiliale(BaseModel):
+    original_id = models.PositiveIntegerField(verbose_name='detail transfert original')
     entete = models.ForeignKey(TransfertsEntreFiliale, on_delete=models.PROTECT)
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
     produit = models.ForeignKey(Produit, verbose_name='Produit', on_delete=models.PROTECT)
@@ -309,6 +311,11 @@ class DetailsTransfertEntreFiliale(BaseModel):
     volume_boite = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Volume boite')
     poids_colis = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Poids du Colis')
     qtt = models.IntegerField(verbose_name='Quantité')
+
+
+def get_current_filiale_prefix():
+    current_prefix = Parametres.objects.get(id=1).filiale.prefix_filiale
+    return str(current_prefix)
 
 
 @receiver(post_save, sender=DetailsAchatsFournisseur, dispatch_uid="add_achats_to_stock")
@@ -614,18 +621,51 @@ def add_transfert_entre_filiale(sender, instance, created, **kwargs):
                     pass
                 else:
                     details_transfert = DetailsTransfert.objects.filter(entete=instance.id).all()
-                    new_obj = TransfertsEntreFiliale(
+                    new_tef_obj = TransfertsEntreFiliale(
                         original_id=instance.id,
                         depuis_filiale=instance.depuis_magasin.filiale,
                         vers_filiale=instance.vers_magasin.filiale,
-                        statut_doc_id=1
+                        statut_doc_id=1,
+                        created_by=instance.created_by
                     )
-                    new_obj.save()
+                    new_tef_obj.save()
                     for obj in details_transfert:
-                        obj = DetailsTransfertEntreFiliale(
-                            entete=new_obj.id,
-                            conformite=obj.conformite,
+                        new_dtef_obj = DetailsTransfertEntreFiliale(
+                            entete_id=new_tef_obj.id,
+                            original_id=obj.id,
+                            conformite_id=obj.conformite_id,
                             produit=obj.produit,
+                            prix_achat=obj.prix_achat,
+                            prix_vente=obj.prix_vente,
+                            taux_tva=obj.taux_tva,
+                            shp=obj.shp,
+                            ppa_ht=obj.ppa_ht,
+                            n_lot=obj.n_lot,
+                            date_peremption=obj.date_peremption,
+                            colisage=obj.colisage,
+                            poids_boite=obj.poids_boite,
+                            volume_boite=obj.volume_boite,
+                            poids_colis=obj.poids_colis,
+                            qtt=obj.qtt,
+                            created_by=instance.created_by
+                        )
+                        new_dtef_obj.save()
+                    #  global DATA ****************************************
+
+                    new_gtef_obj = GlobalTransfertsEntreFiliale(
+                        id='/'.join((get_current_filiale_prefix(), str(instance.id))),
+                        depuis_filiale_id=instance.depuis_magasin.filiale_id,
+                        vers_filiale_id=instance.vers_magasin.filiale_id,
+                        statut_doc_id=1,)
+                    new_gtef_obj.save()
+
+
+                    for obj in details_transfert:
+                        new_line = GlobalDetailsTransfertEntreFiliale(
+                            id='/'.join((get_current_filiale_prefix(), str(obj.id))),
+                            entete_id=new_gtef_obj.id,
+                            conformite_id=obj.conformite_id,
+                            produit_id=obj.produit_id,
                             prix_achat=obj.prix_achat,
                             prix_vente=obj.prix_vente,
                             taux_tva=obj.taux_tva,
@@ -639,4 +679,13 @@ def add_transfert_entre_filiale(sender, instance, created, **kwargs):
                             poids_colis=obj.poids_colis,
                             qtt=obj.qtt
                         )
-                        obj.save()
+                        new_line.save()
+
+
+@receiver(post_save, sender=MotifsInventaire, dispatch_uid="add_motif_inventaire_stockinstance")
+def add_motif_inventaire_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalMotifsInventaire(id=instance.id,
+                                         motif_inventaire=instance.motif_inventaire
+                                         )
+        new_obj.save()

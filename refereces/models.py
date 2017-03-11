@@ -4,6 +4,16 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from shared_data.models import GlobalFiliale, GlobalAxe, GlobalWilaya, GlobalCommune, GlobalClient, \
+    GlobalStatutDocument, GlobalStatutProduit, GlobalFormePharmaceutique, GlobalDci, GlobalTypeEntreposage, \
+    GlobalFounisseur, GlobalLaboratoire, GlobalTypesMouvementStock, GlobalMotifsInventaire, \
+    GlobalTransfertsEntreFiliale, GlobalDetailsTransfertEntreFiliale, GlobalProduit
+
+
+def get_current_filiale_id():
+    from flux_physique.models import Parametres
+    current_filiale = Parametres.objects.get(id=1).filiale.id
+    return current_filiale
 
 class Filiale(models.Model):
     filiale = models.CharField(max_length=30, verbose_name='Nom de la filiale')
@@ -11,6 +21,7 @@ class Filiale(models.Model):
 
     def __str__(self):
         return self.filiale
+
 
 class Axe(models.Model):
     axe = models.CharField(max_length=50, verbose_name='Axe de livraion', unique=True)
@@ -150,10 +161,17 @@ class TypesMouvementStock(models.Model):
     type = models.CharField(max_length=50, unique=True, verbose_name='Type du mouvement')
     niveau = models.SmallIntegerField(verbose_name='Niveau de difficulté', null=True, blank=True)
     description = models.TextField(verbose_name='Description du mouvement', null=True, blank=True)
-    point_ligne = models.SmallIntegerField(verbose_name='Points par ligne', null=True, blank=True)
-    point_boite = models.SmallIntegerField(verbose_name='Points par boites', null=True, blank=True)
-    point_colis = models.SmallIntegerField(verbose_name='Points par colis', null=True, blank=True)
-    point_colis_palettise = models.SmallIntegerField(verbose_name='Point par colis palettisés', null=True, blank=True)
+    point_ligne_execution = models.SmallIntegerField(verbose_name='Points par ligne executée', null=True, blank=True)
+    point_ligne_saisie = models.SmallIntegerField(verbose_name='Points par ligne saisie', null=True, blank=True)
+    point_ligne_validation = models.SmallIntegerField(verbose_name='Points par ligne validée', null=True, blank=True)
+    point_boite_execution = models.SmallIntegerField(verbose_name='Points par boites executée', null=True, blank=True)
+    point_boite_validation = models.SmallIntegerField(verbose_name='Points par boite validée', null=True, blank=True)
+    point_colis_execution = models.SmallIntegerField(verbose_name='Points par colis executé', null=True, blank=True)
+    point_colis_validation = models.SmallIntegerField(verbose_name='Points par colis validée', null=True, blank=True)
+    point_colis_palettise_execution = models.SmallIntegerField(verbose_name='Point par colis palettisés executée',
+                                                               null=True, blank=True)
+    point_colis_palettise_validation = models.SmallIntegerField(verbose_name='Point par colis palettisé validé',
+                                                                null=True, blank=True)
 
     def __str__(self):
         return self.type
@@ -167,7 +185,7 @@ class Employer(models.Model):
         ordering = ['nom', ]
 
     def __str__(self):
-        return ' '.join((self.nom,self.code_RH))
+        return ' '.join((self.nom, self.code_RH))
 
 
 class DepuisMagasinsAutorise(models.Model):
@@ -211,3 +229,153 @@ def auto_add_emplacement_instance(sender, instance, created, **kwargs):
             type_entreposage=instance.type_entreposage
             )
         obj.save()
+
+
+@receiver(post_save, sender=Filiale, dispatch_uid="add_filiale_instance")
+def add_filiale_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalFiliale(id=instance.id,
+                                filiale=instance.filiale,
+                                prefix_filiale=instance.prefix_filiale
+                                )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Axe, dispatch_uid="add_axe_instance")
+def add_axe_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalAxe(id=instance.id,
+                            axe=instance.axe,
+                            filiale_id=get_current_filiale_id()
+                            )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Wilaya, dispatch_uid="add_wilaya_instance")
+def add_wilaya_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalWilaya(id=instance.id,
+                               code_wilaya=instance.code_wilaya,
+                               wilaya=instance.wilaya
+                               )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Commune, dispatch_uid="add_commune_instance")
+def add_commune_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalCommune(id=instance.id,
+                                commune=instance.commune,
+                                wilaya_id=instance.wilaya_id
+                                )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Client, dispatch_uid="add_client_instance")
+def add_client_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalClient(id=instance.id,
+                               dossier=instance.dossier,
+                               nom_prenom=instance.nom_prenom,
+                               adresse=instance.adresse,
+                               commune_id=instance.commune_id,
+                               telephone=instance.telephone
+                               )
+        new_obj.save()
+
+
+@receiver(post_save, sender=StatutDocument, dispatch_uid="add_statut_document_instance")
+def add_statut_document_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalStatutDocument(id=instance.id,
+                                       statut=instance.statut
+                                       )
+        new_obj.save()
+
+
+@receiver(post_save, sender=StatutProduit, dispatch_uid="add_statut_produit_instance")
+def add_statut_produit_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalStatutProduit(id=instance.id,
+                                      statut=instance.statut
+                                      )
+        new_obj.save()
+
+
+@receiver(post_save, sender=FormePharmaceutique, dispatch_uid="add_form_pharmaceutique_instance")
+def add_forme_pharmaceutique_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalFormePharmaceutique(id=instance.id,
+                                            forme=instance.forme
+                                            )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Dci, dispatch_uid="add_DCI_instance")
+def add_dci_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalDci(id=instance.id,
+                            dci=instance.dci,
+                            forme_phrmaceutique_id=instance.forme_phrmaceutique_id,
+                            dosage=instance.dosage
+                            )
+        new_obj.save()
+
+
+@receiver(post_save, sender=TypeEntreposage, dispatch_uid="add_types_entreposage_instance")
+def add_types_entreposage_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalTypeEntreposage(id=instance.id,
+                                        type_entreposage=instance.type_entreposage,
+                                        )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Founisseur, dispatch_uid="add_fournisseur_instance")
+def add_types_fournisseur_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalFounisseur(id=instance.id,
+                                   dossier=instance.dossier,
+                                   nom=instance.nom
+                                   )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Laboratoire, dispatch_uid="add_laboratoire_instance")
+def add_types_laboratoire_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalLaboratoire(id=instance.id,
+                                   dossier=instance.dossier,
+                                   nom=instance.nom
+                                    )
+        new_obj.save()
+
+
+@receiver(post_save, sender=Produit, dispatch_uid="add_produit_instance")
+def add_produit_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalProduit(id=instance.id,
+                                code=instance.code,
+                                produit=instance.produit,
+                                dci_id=instance.dci_id,
+                                conditionnement=instance.conditionnement,
+                                a_rique=instance.a_rique,
+                                psychotrope=instance.psychotrope,
+                                thermosensible=instance.thermosensible,
+                                poids=instance.poids,
+                                volume=instance.volume,
+                                poids_colis=instance.poids_colis,
+                                laboratoire_id=instance.laboratoire_id,
+                                )
+        new_obj.save()
+
+
+@receiver(post_save, sender=TypesMouvementStock, dispatch_uid="add_mvt_stockinstance")
+def add_types_mvt_stock_to_global_data(sender, instance, created, **kwargs):
+    if created:
+        new_obj = GlobalTypesMouvementStock(id=instance.id,
+                                            type=instance.type,
+                                            description=instance.description
+                                            )
+        new_obj.save()
+

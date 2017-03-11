@@ -44,6 +44,7 @@ INSTALLED_APPS = (
     'pharmnet_data',
     'django_ajax',
     'ajax_select',
+    'shared_data',
     )
 
 MIDDLEWARE_CLASSES = (
@@ -89,8 +90,16 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'localhost',
+        },
+    'shared_db': {
+        'ENGINE': 'mysql.connector.django',
+        'NAME': 'locapro_shared',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',
         }
 }
+DATABASE_ROUTERS = ['shared_data.routers.SharedDataRouter', ]
 
 
 # Internationalization
@@ -113,7 +122,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
 STATIC_URL = '/static/'
-#STATIC_ROOT= os.path.join(BASE_DIR,'static')
+#STATIC_ROOT = os.path.join(BASE_DIR,'static')
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'

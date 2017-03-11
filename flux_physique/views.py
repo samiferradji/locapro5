@@ -536,9 +536,9 @@ def stock_disponible_vente(request):  # todo developper un interface vente
 @login_required(login_url='/login/')
 @ajax
 def qtt_disponible(request):  # aficher les produits disponibles pour le transfert
-    id_stock = int(request.GET['current_id_stock'])
-    obj_stock = Stock.objects.get(id=id_stock)
-    if id_stock:
+    id_stock = request.GET.get('current_id_stock', None)
+    if id_stock != '' and id_stock is not None:
+        obj_stock = Stock.objects.get(id=id_stock)
         queryset = Stock.objects.select_related().values(
             'n_lot',
             'date_peremption',
