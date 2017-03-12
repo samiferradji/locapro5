@@ -315,6 +315,7 @@ def add_forme_pharmaceutique_to_global_data(sender, instance, created, **kwargs)
 def add_dci_to_global_data(sender, instance, created, **kwargs):
     if created:
         new_obj = GlobalDci(id=instance.id,
+                            code_dci=instance.code_dci,
                             dci=instance.dci,
                             forme_phrmaceutique_id=instance.forme_phrmaceutique_id,
                             dosage=instance.dosage
@@ -332,7 +333,7 @@ def add_types_entreposage_to_global_data(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Founisseur, dispatch_uid="add_fournisseur_instance")
-def add_types_fournisseur_to_global_data(sender, instance, created, **kwargs):
+def add_fournisseur_to_global_data(sender, instance, created, **kwargs):
     if created:
         new_obj = GlobalFounisseur(id=instance.id,
                                    dossier=instance.dossier,
@@ -342,7 +343,7 @@ def add_types_fournisseur_to_global_data(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Laboratoire, dispatch_uid="add_laboratoire_instance")
-def add_types_laboratoire_to_global_data(sender, instance, created, **kwargs):
+def add_laboratoire_to_global_data(sender, instance, created, **kwargs):
     if created:
         new_obj = GlobalLaboratoire(id=instance.id,
                                    dossier=instance.dossier,

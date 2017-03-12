@@ -7,6 +7,7 @@ from flux_physique import views as flux_physique_views
 from pharmnet_data.views import import_data, import_facture_client
 from django.conf import settings
 from ajax_select import urls as ajax_select_urls
+from shared_data import views as shared_views
 
 
 
@@ -53,6 +54,8 @@ urlpatterns = patterns(
     url(r'^import/', import_data),
     url(r'^import_facture_client/', import_facture_client),
     url(r'^rapport/', flux_physique_views.rapport_efforts),
+    url(r'^sync/', shared_views.synch_data),
+
     )
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns  += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

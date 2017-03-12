@@ -204,7 +204,7 @@ class DetailsTransfert(BaseModel):
     qtt = models.IntegerField(verbose_name='Quantité')
 
 
-class MotifsInventaire(BaseModel):
+class MotifsInventaire(models.Model):
     motif_inventaire = models.CharField(max_length=30, verbose_name="Motif de l'inventaire")
 
     def __str__(self):
@@ -621,44 +621,12 @@ def add_transfert_entre_filiale(sender, instance, created, **kwargs):
                     pass
                 else:
                     details_transfert = DetailsTransfert.objects.filter(entete=instance.id).all()
-                    new_tef_obj = TransfertsEntreFiliale(
-                        original_id=instance.id,
-                        depuis_filiale=instance.depuis_magasin.filiale,
-                        vers_filiale=instance.vers_magasin.filiale,
-                        statut_doc_id=1,
-                        created_by=instance.created_by
-                    )
-                    new_tef_obj.save()
-                    for obj in details_transfert:
-                        new_dtef_obj = DetailsTransfertEntreFiliale(
-                            entete_id=new_tef_obj.id,
-                            original_id=obj.id,
-                            conformite_id=obj.conformite_id,
-                            produit=obj.produit,
-                            prix_achat=obj.prix_achat,
-                            prix_vente=obj.prix_vente,
-                            taux_tva=obj.taux_tva,
-                            shp=obj.shp,
-                            ppa_ht=obj.ppa_ht,
-                            n_lot=obj.n_lot,
-                            date_peremption=obj.date_peremption,
-                            colisage=obj.colisage,
-                            poids_boite=obj.poids_boite,
-                            volume_boite=obj.volume_boite,
-                            poids_colis=obj.poids_colis,
-                            qtt=obj.qtt,
-                            created_by=instance.created_by
-                        )
-                        new_dtef_obj.save()
-                    #  global DATA ****************************************
-
                     new_gtef_obj = GlobalTransfertsEntreFiliale(
                         id='/'.join((get_current_filiale_prefix(), str(instance.id))),
                         depuis_filiale_id=instance.depuis_magasin.filiale_id,
                         vers_filiale_id=instance.vers_magasin.filiale_id,
                         statut_doc_id=1,)
                     new_gtef_obj.save()
-
 
                     for obj in details_transfert:
                         new_line = GlobalDetailsTransfertEntreFiliale(
