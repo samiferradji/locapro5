@@ -1,6 +1,6 @@
 from ajax_select import register, LookupChannel
 from .models import Emplacement, Dci, Client, Commune, Employer, Produit
-from flux_physique.models import Transfert
+from flux_physique.models import Transfert, TransfertsEntreFiliale
 
 
 @register('emplacements')
@@ -82,6 +82,17 @@ class ProduitLookup(LookupChannel):
 class TransfertLookup(LookupChannel):
 
     model = Transfert
+
+    def get_query(self, q, request):
+        return self.model.objects.filter(id__icontains=q).order_by('id')[:25]
+
+    def format_match(self, obj):
+        return u"<span class='tag'>%s</span>" % obj.id
+
+@register('transferts_entre_filiale')
+class TransfertEntreFilialeleLookup(LookupChannel):
+
+    model = TransfertsEntreFiliale
 
     def get_query(self, q, request):
         return self.model.objects.filter(id__icontains=q).order_by('id')[:25]

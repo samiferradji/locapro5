@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from .models import GlobalFiliale, GlobalAxe, GlobalWilaya, GlobalCommune, GlobalClient, GlobalStatutDocument, \
     GlobalStatutProduit, GlobalFormePharmaceutique, GlobalDci, GlobalTypeEntreposage, GlobalFounisseur,\
-    GlobalLaboratoire, GlobalProduit, GlobalTypesMouvementStock, GlobalMotifsInventaire
+    GlobalLaboratoire, GlobalProduit, GlobalTypesMouvementStock, GlobalMotifsInventaire, GlobalTransfertsEntreFiliale, \
+    GlobalDetailsTransfertEntreFiliale
 from refereces.models import Filiale, Axe, Wilaya, Commune, Client, StatutDocument, StatutProduit, \
-    FormePharmaceutique, Dci, TypeEntreposage, Founisseur, Laboratoire, Produit , TypesMouvementStock
-from flux_physique.models import MotifsInventaire
+    FormePharmaceutique, Dci, TypeEntreposage, Founisseur, Laboratoire, Produit, TypesMouvementStock
+from flux_physique.models import MotifsInventaire, TransfertsEntreFiliale, DetailsTransfertEntreFiliale
 
 
 def synch_data(request):
@@ -193,6 +194,50 @@ def synch_data(request):
                 new_obj = MotifsInventaire(id=obj.id,
                                            motif_inventaire=obj.motif_inventaire)
                 new_obj.save()
+
+    def sync_transfert_entre_filiale():
+        global_objs = GlobalTransfertsEntreFiliale.objects.all()
+        for obj in global_objs:
+            if TransfertsEntreFiliale.objects.filter(id=obj.id).exists():
+                current_transfert = TransfertsEntreFiliale.objects.get(id=obj.id)
+                if current_transfert.statut_doc_id == obj.statut_doc_id:
+                    pass
+                    current_transfert.save()
+                else:
+                    current_transfert.statut_doc_id = obj.statut_doc_id
+                    current_transfert.save()
+            else:
+                new_obj = TransfertsEntreFiliale(
+                    id=obj.id,
+                    depuis_filiale_id=obj.depuis_filiale_id,
+                    vers_filiale_id=obj.vers_filiale_id,
+                    statut_doc_id=obj.statut_doc_id,
+                    created_by_id=1
+                )
+                new_obj.save()
+                details_obj = GlobalDetailsTransfertEntreFiliale.objects.filter(entete_id=obj.id)
+                for line in details_obj:
+                    new_line = DetailsTransfertEntreFiliale(
+                        id=line.id,
+                        entete_id=obj.id,
+                        conformite_id=line.conformite_id,
+                        produit_id=line.produit_id,
+                        prix_achat=line.prix_achat,
+                        prix_vente=line.prix_vente,
+                        taux_tva=line.taux_tva,
+                        shp=line.shp,
+                        ppa_ht=line.ppa_ht,
+                        n_lot=line.n_lot,
+                        date_peremption=line.date_peremption,
+                        colisage=line.colisage,
+                        poids_boite=line.poids_boite,
+                        volume_boite=line.volume_boite,
+                        poids_colis=line.poids_colis,
+                        qtt=line.qtt,
+                        created_by_id=1
+                    )
+                    new_line.save()
+
     sync_filiale()
     sync_axe()
     sync_wilaya()
@@ -208,6 +253,7 @@ def synch_data(request):
     sync_produit()
     sync_type_mvt_stock()
     sync_motifs_inventaire()
+    sync_transfert_entre_filiale()
 
     return render(request,
                   'rapport.html')

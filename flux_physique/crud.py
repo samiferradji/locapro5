@@ -3,7 +3,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Sum
 from django.db import transaction
 from flux_physique.models import Transfert, Reservation, DetailsTransfert, EnteteTempo, Stock, HistoriqueDuTravail,\
-    Validation, DetailsAchatsFournisseur, AchatsFournisseur, Parametres
+    Validation, DetailsAchatsFournisseur, AchatsFournisseur, Parametres, TransfertsEntreFiliale, \
+    DetailsTransfertEntreFiliale
 from refereces.models import Emplacement, StatutDocument, Magasin, Employer
 
 
@@ -137,43 +138,19 @@ def validate_transaction(type_transaction=None, id_transaction=None, created_by=
         transfert_obj.statut_doc_id = 2
         transfert_obj.validate_by_id = created_by
         transfert_obj.save()
-        motif_mouvement = transfert_obj.motif.id
         id_details_transfert = DetailsTransfert.objects.filter(entete=id_transaction).values_list('id')
         Stock.objects.filter(content_type=details_contenent_type,
                              id_in_content_type__in=id_details_transfert).update(recu=True)
         current_validation = Validation.objects.get(id_in_content_type=id_transaction,
                                                     content_type=transfert_contenent_type)
-        groupe = 0
-        if code_RH1:
-            groupe +=1
-        if code_RH2:
-            groupe += 1
-        if code_RH3:
-            groupe += 1
-        if code_RH1:
-            employer = Employer.objects.get(code_RH=code_RH1)
+        groupe_list = [code_RH1, code_RH2, code_RH3]
+        groupe_list = list(filter(None, groupe_list))
+        groupe_count = len(groupe_list)
+        for item in groupe_list:
+            employee = Employer.objects.get(code_RH=item)
             new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=motif_mouvement,  # 1 pour transfert
-                groupe=groupe,
-                id_validation=current_validation
-            )
-            new_execution.save()
-        if code_RH2:
-            employer = Employer.objects.get(code_RH=code_RH2)
-            new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=motif_mouvement,  # 1 pour transfert
-                groupe=groupe,
-                id_validation=current_validation
-            )
-            new_execution.save()
-        if code_RH3:
-            employer = Employer.objects.get(code_RH=code_RH3)
-            new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=motif_mouvement,  # 1 pour transfert
-                groupe=groupe,
+                employer=employee,
+                groupe=groupe_count,
                 id_validation=current_validation
             )
             new_execution.save()
@@ -192,37 +169,14 @@ def validate_transaction(type_transaction=None, id_transaction=None, created_by=
                              id_in_content_type__in=id_details_reception).update(recu=True)
         current_validation = Validation.objects.get(id_in_content_type=reception_obj.id,
                                                     content_type=reception_contenent_type)
-        groupe = 0
-        if code_RH1:
-            groupe +=1
-        if code_RH2:
-            groupe += 1
-        if code_RH3:
-            groupe += 1
-        if code_RH1:
-            employer = Employer.objects.get(code_RH=code_RH1)
+        groupe_list = [code_RH1, code_RH2, code_RH3]
+        groupe_list = list(filter(None, groupe_list))
+        groupe_count = len(groupe_list)
+        for item in groupe_list:
+            employee = Employer.objects.get(code_RH=item)
             new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=2,  # 1 pour transfert, 2 pour reception
-                groupe=groupe,
-                id_validation=current_validation
-            )
-            new_execution.save()
-        if code_RH2:
-            employer = Employer.objects.get(code_RH=code_RH2)
-            new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=2,  # 1 pour transfert, 2 pour reception
-                groupe=groupe,
-                id_validation=current_validation
-            )
-            new_execution.save()
-        if code_RH3:
-            employer = Employer.objects.get(code_RH=code_RH3)
-            new_execution = HistoriqueDuTravail(
-                employer=employer,
-                type_id=2,  # 1 pour transfert, 2 pour reception
-                groupe=groupe,
+                employer=employee,
+                groupe=groupe_count,
                 id_validation=current_validation
             )
             new_execution.save()
@@ -322,3 +276,74 @@ def compresser_stock2():
         new_obj.delete()
 
     return 'ok'
+
+
+@transaction.atomic
+def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user_id):
+    depuis_filiale_id = Parametres.objects.get(id=1).filiale_id
+    if depuis_filiale_id == vers_filiale_id :
+        return 'Vous ne pouvez pas faire un transfert vers votre filiale'
+    else:
+        new_transfert = TransfertsEntreFiliale(depuis_filiale_id=depuis_filiale_id,
+                                               vers_filiale_id=vers_filiale_id,
+                                               statut_doc_id=1,
+                                               created_by_id=user_id)
+        new_transfert.save()
+        for obj in Reservation.objects.filter(id= entete_reservation_id):
+            new_line = DetailsTransfertEntreFiliale(
+                entete_id=new_transfert.id,
+                conformite_id=obj.id_stock.conformite_id,
+                produit_id=obj.id_stock.produit_id,
+                prix_achat=obj.id_stock.prix_achat,
+                prix_vente=obj.id_stock.prix_vente,
+                taux_tva=obj.id_stock.taux_tva,
+                shp=obj.id_stock.shp,
+                ppa_ht=obj.id_stock.ppa_ht,
+                n_lot=obj.id_stock.n_lot,
+                date_peremption=obj.id_stock.date_peremption,
+                colisage=obj.id_stock.colisage,
+                poids_boite=obj.id_stock.poids_boite,
+                volume_boite=obj.id_stock.volume_boite,
+                poids_colis=obj.id_stock.poids_colis,
+                qtt=obj.qtt,
+                created_by_id=user_id
+            )
+            new_line.save()
+            return 'OK'
+
+@transaction.atomic
+def confirmer_transfert_entre_filiale(id_transaction, created_by_id, code_RH1, code_RH2, code_RH3):
+    details_contenent_type = ContentType.objects.get_for_model(DetailsTransfertEntreFiliale).id
+    transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
+    transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
+    transfert_obj.statut_doc_id = 2
+    transfert_obj.validate_by_id = created_by_id
+    transfert_obj.save()
+    id_details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=id_transaction).values_list('id')
+    Stock.objects.filter(content_type=details_contenent_type,
+                         id_in_content_type__in=id_details_transfert).update(recu=True)
+    current_validation = Validation.objects.get(id_in_content_type=id_transaction,
+                                                content_type=transfert_contenent_type)
+    current_validation.created_by_id = created_by_id  # initialised with id = admin
+    current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
+    groupe_list = [code_RH1, code_RH2, code_RH3]
+    groupe_list = list(filter(None, groupe_list))
+    groupe_count = len(groupe_list)
+    for item in groupe_list:
+        employee = Employer.objects.get(code_RH=item)
+        new_execution = HistoriqueDuTravail(
+            employer=employee,
+            groupe=groupe_count,
+            id_validation=current_validation
+        )
+        new_execution.save()
+    return 'OK'
+
+@transaction.atomic
+def expedier_transfert_entre_filiales(id_transaction, created_by_id, code_RH1, code_RH2, code_RH3):
+    pass  # il faux créer une table pour les expéditions , puis event --> validation , then update
+
+@transaction.atomic
+def reception_transferts_entre_filiales(id_transaction, created_by_id, code_RH1, code_RH2, code_RH3):
+    pass  #  lors de la confirmation d'un transfert entre filiale, créer deux validation avec deux motifs
+          #  différents: transfert EF et recption TEF

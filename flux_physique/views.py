@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-from django.db import transaction
 import csv
 import operator
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 from functools import reduce
 from django.core.paginator import PageNotAnInteger, EmptyPage, Paginator
-from django.db.models import Q, Count
-from django.db.models import Sum, Min, When, Case
-from django.db.models import F
-from django.db.models.expressions import Value
+from django.db.models import Q
+from django.db.models import Min, When, Case
 from django_ajax.decorators import ajax
 from django.forms import modelform_factory
 from django.shortcuts import render
@@ -17,7 +14,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from flux_physique.models import *
 from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm
-from flux_physique.crud import commit_transaction, validate_transaction, compresser_stock, compresser_stock2
+from flux_physique.crud import commit_transaction, validate_transaction
 from refereces.models import DepuisMagasinsAutorise, Employer
 
 
@@ -930,7 +927,7 @@ def list_achats(request):
 
 @permission_required('flux_physique.exporter_stock', raise_exception=True)
 def stock_csv(request):
-    d = str(datetime.now())
+    d = str(timezone.now())
     filename = 'stock au '+d+'.csv'
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="'+filename+'"'
@@ -990,142 +987,6 @@ def stock_csv(request):
 
 
 def rapport_efforts(request):
-
-    @transaction.atomic   # ajouter le type etalage avant de lancer, derniere validation 10627
-    def set_entreposage():
-        query = Transfert.objects.all().filter(created_date__lt="2016-12-27 13:32:07")
-        for obj in query:
-            if obj.depuis_magasin == obj.vers_magasin:
-                obj.motif_id = 4
-                obj.save()
-
-    @transaction.atomic
-    def set_etalage():
-        query = Transfert.objects.all()
-        for obj in query:
-            if obj.vers_magasin_id == 3 and obj.motif_id != 3:
-                obj.motif_id = 5
-                obj.save()
-
-    @transaction.atomic
-    def set_sortie_colis():
-        query = Transfert.objects.all().filter(created_date__lt="2016-12-27 13:32:07")
-        for obj in query:
-            if obj.vers_magasin_id == 3 and obj.created_by_id in [4,5] and obj.validate_by_id in [11,24,28,29]:
-                obj.motif_id = 3
-                obj.save()
-
-    @transaction.atomic
-    def set_validation_achat():
-        query = Validation.objects.all()
-        for obj in query:
-            if obj.content_type == 25:   #  Achat
-                current_bon = AchatsFournisseur.objects.get(id=obj.id_in_content_type)
-                curent_lines = DetailsAchatsFournisseur.objects.filter(entete=current_bon.id)
-                # *****colis ********
-                colis = 0
-                colis_en_palette = 0
-                vrac = 0
-                for line in curent_lines:
-                    if line.colisage != 0:
-                        colis += line.qtt // line.colisage
-                        vrac += line.qtt % line.colisage
-                    else:
-                        vrac += line.qtt
-                obj.colis_count = colis
-                obj.colis_en_palette = colis_en_palette
-                obj.boites_en_vrac = vrac
-                obj.motif_mvnt_id = 2
-                # ****** origine created by , date ******
-                obj.origin_created_date = current_bon.created_date
-                obj.origine_created_by = current_bon.created_by
-            obj.save()
-
-    @transaction.atomic
-    def set_validation_transfert():
-        query = Validation.objects.all()
-        for obj in query:
-            if obj.content_type == 31:  # transfert
-                current_bon = Transfert.objects.get(id=obj.id_in_content_type)
-                curent_lines = DetailsTransfert.objects.filter(entete=current_bon.id)
-                colis = 0
-                colis_en_palette = 0
-                vrac = 0
-                for line in curent_lines:
-                    if line.colisage != 0:
-                        if current_bon.motif_id in [Parametres.objects.get(id=1).process_entreposage_id,
-                                              Parametres.objects.get(id=1).process_etalage_id]:
-                            if line.vers_emplacement.type_entreposage_id == 1:
-                                vrac += line.qtt
-                            if line.vers_emplacement.type_entreposage_id == 2:
-                                vrac += line.qtt % line.colisage
-                                colis += line.qtt // line.colisage
-                            if line.vers_emplacement.type_entreposage_id == 3:
-                                vrac += line.qtt % line.colisage
-                                colis_en_palette += line.qtt // line.colisage
-                        else:
-                            if line.depuis_emplacement.type_entreposage_id == 1:
-                                vrac += line.qtt
-                            if line.depuis_emplacement.type_entreposage_id == 2:
-                                vrac += line.qtt % line.colisage
-                                colis += line.qtt // line.colisage
-                            if line.depuis_emplacement.type_entreposage_id == 3:
-                                vrac += line.qtt % line.colisage
-                                colis_en_palette += line.qtt // line.colisage
-                    else:
-                        vrac += line.qtt
-                obj.boites_en_vrac = vrac
-                obj.colis_count = colis
-                obj.colis_en_palette = colis_en_palette
-                obj.motif_mvnt_id = current_bon.motif_id
-                obj.origin_created_date = current_bon.created_date
-                obj.origine_created_by = current_bon.created_by
-            obj.save()
-
-    @transaction.atomic
-    def supprimer_db():
-        query = Validation.objects.values(
-            'id_in_content_type',
-            'content_type',
-            ).distinct().annotate(myid=Min('id'))
-        liste_ids = []
-        query.count()
-        for obj in query:
-            liste_ids.append(obj['myid'])
-        q1 = HistoriqueDuTravail.objects.all()
-        for obj in q1:
-            if obj.id_validation_id not in liste_ids:
-                obj.delete()
-        q2 = Validation.objects.all()
-        for obj in q2:
-            if obj.id not in liste_ids:
-                obj.delete()
-
-    @transaction.atomic
-    def set_emplacement_type_entreposage():
-        emplacemets = Emplacement.objects.all()
-        for line in emplacemets:
-            if line.magasin_id == 1:
-                line.type_entreposage_id = 2
-            if line.magasin_id == 2:
-                line.type_entreposage_id = 3
-            if line.magasin_id == 3:
-                line.type_entreposage_id = 1
-            if line.magasin_id == 4:
-                line.type_entreposage_id = 1
-            if line.magasin_id == 5:
-                line.type_entreposage_id = 1
-            line.save()
-
-    @transaction.atomic
-    def correct_type_emplacement():
-        produit = Produit.objects.all()
-        for obj in produit:
-            if obj.type_entreposage_id in  [2,3]:
-                empl_id = obj.prelevement_id
-                empl_obj = Emplacement.objects.get(id=empl_id)
-                empl_obj.type_entreposage_id = obj.type_entreposage_id
-                empl_obj.save()
 
     return render(request,
                   'rapport.html')

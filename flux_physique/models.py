@@ -17,6 +17,7 @@ def get_current_year():
     current_year = datetime.datetime.now().year
     return current_year
 
+
 exercice = get_current_year()
 
 
@@ -24,6 +25,10 @@ class Parametres(models.Model):
     filiale = models.ForeignKey(Filiale, verbose_name='Filiale')
     magasin_picking = models.ForeignKey(Magasin, verbose_name='Magasin de picking')
     emplacement_achat = models.ForeignKey(Emplacement, verbose_name='Emplacement de reception des achats')
+    emplacement_expedition_transfert_entre_filiale = models.ForeignKey(
+        Emplacement, verbose_name='Emplacement de reception des Transferts entre Filiales',
+        related_name= 'emplacement_expedition_transfert_entre_filiale'
+    )
     process_achat = models.ForeignKey(TypesMouvementStock, verbose_name='Processus achat', related_name='Achat')
     process_transfer = models.ForeignKey(TypesMouvementStock, verbose_name='Processus transfert interne',
                                          related_name='transfert_process')
@@ -31,8 +36,18 @@ class Parametres(models.Model):
                                             related_name='entreposage')
     process_etalage = models.ForeignKey(TypesMouvementStock, verbose_name='Processus etalage', related_name='etalage')
     process_vente_colis_complet = models.ForeignKey(TypesMouvementStock, verbose_name='Processus vente colis complets',
-
                                                     related_name='vente_colis')
+    process_transfert_entre_filiales = models.ForeignKey(TypesMouvementStock,
+                                                         verbose_name='Processus transfert entre filiales',
+                                                    related_name='transfert_entre_filiales')
+    process_expedition_transfert_entre_filiales = models.ForeignKey(TypesMouvementStock,
+                                                         verbose_name='Processus extpédition des transferts entre '
+                                                                      'filiales',
+                                                         related_name='expedition_transfert_entre_filiales')
+    process_reception_transfert_entre_filiales = models.ForeignKey(TypesMouvementStock,
+                                                         verbose_name='Processus réception des transferts entre'
+                                                                      ' filiales',
+                                                         related_name='reception_transfert_entre_filiales')
 
 
 class BaseModel(models.Model):
@@ -159,7 +174,7 @@ class Transfert(BaseModel):
 
 
 class Stock(BaseModel):
-    id_in_content_type = models.PositiveIntegerField(verbose_name='Id Stock')
+    id_in_content_type = models.CharField(max_length=20, verbose_name='Original id')
     content_type = models.PositiveIntegerField(verbose_name='Contenent_type')
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
     emplacement = models.ForeignKey(Emplacement, verbose_name='Emplacement', on_delete=models.PROTECT)
@@ -256,7 +271,7 @@ class Reservation(models.Model):
 
 
 class Validation(BaseModel):
-    id_in_content_type = models.PositiveIntegerField(verbose_name='Id in content type')
+    id_in_content_type = models.CharField(max_length=20, verbose_name='Id in content type')
     content_type = models.PositiveIntegerField(verbose_name='Contenent type')
     boite_count = models.IntegerField(verbose_name='Nombre de boites')
     boites_en_vrac = models.IntegerField(verbose_name='Nombre de boites en VRAC', default=0)
@@ -273,18 +288,17 @@ class Validation(BaseModel):
 
 class HistoriqueDuTravail(models.Model):
     id_validation = models.ForeignKey(Validation, on_delete=models.CASCADE, verbose_name='ID Validation')
-    type = models.ForeignKey(TypesMouvementStock, verbose_name='Type du mouvement de stock', on_delete=models.PROTECT)
-    employer = models.ForeignKey(Employer, verbose_name='Employer', on_delete=models.PROTECT)
+    employer = models.ForeignKey(Employer, verbose_name='Employé', on_delete=models.PROTECT)
     groupe = models.SmallIntegerField(verbose_name='Effectif du groupe')
 
     def __str__(self):
         return ' '.join(
-            (self.employer.__str__(), self.groupe.__str__(), self.type.__str__())
+            (self.employee.__str__(), self.groupe.__str__(), self.type.__str__())
         )
 
 
 class TransfertsEntreFiliale(BaseModel):
-    original_id = models.PositiveIntegerField(verbose_name='transfert original')
+    id = models.CharField(max_length=20, primary_key=True, editable=False)
     depuis_filiale = models.ForeignKey(Filiale, verbose_name='Depuis filiale', related_name='depui_filiale',
                                        on_delete=models.PROTECT)
     vers_filiale = models.ForeignKey(Filiale, verbose_name='Vers filiale', on_delete=models.PROTECT)
@@ -293,9 +307,17 @@ class TransfertsEntreFiliale(BaseModel):
     def __str__(self):
         return str(self.id)
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            i = TransfertsEntreFiliale.objects.all().count()
+            self._id = i + 1
+            currrent_filiale = Parametres.objects.get(id=1).filiale.prefix_filiale
+            self.id = '-'.join((currrent_filiale, str(self._id)))
+        super(TransfertsEntreFiliale, self).save(*args, **kwargs)
+
 
 class DetailsTransfertEntreFiliale(BaseModel):
-    original_id = models.PositiveIntegerField(verbose_name='detail transfert original')
+    id = models.CharField(max_length=20, primary_key=True, editable=False)
     entete = models.ForeignKey(TransfertsEntreFiliale, on_delete=models.PROTECT)
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
     produit = models.ForeignKey(Produit, verbose_name='Produit', on_delete=models.PROTECT)
@@ -311,6 +333,18 @@ class DetailsTransfertEntreFiliale(BaseModel):
     volume_boite = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Volume boite')
     poids_colis = models.DecimalField(decimal_places=2, max_digits=9, verbose_name='Poids du Colis')
     qtt = models.IntegerField(verbose_name='Quantité')
+    depuis_emplacement = models.ForeignKey(Emplacement, verbose_name='Depuis Empl', on_delete=models.PROTECT,
+                                           related_name='depuis_empl_G')
+    vers_emplacement = models.ForeignKey(Emplacement, verbose_name='Vers Empl', on_delete=models.PROTECT,
+                                         related_name='vers_empl_G')
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            i = DetailsTransfertEntreFiliale.objects.all().count()
+            self._id = i + 1
+            currrent_filiale = Parametres.objects.get(id=1).filiale.prefix_filiale
+            self.id = '-'.join((currrent_filiale, str(self._id)))
+        super(DetailsTransfertEntreFiliale, self).save(*args, **kwargs)
 
 
 def get_current_filiale_prefix():
@@ -612,44 +646,6 @@ def add_validation_inventaire(sender, instance, created, **kwargs):
                 stock_item.save()
 
 
-@receiver(post_save, sender=Transfert, dispatch_uid="add_transfert_entre_filiale")
-def add_transfert_entre_filiale(sender, instance, created, **kwargs):
-    if created is False:
-        if instance.vers_magasin.filiale != Parametres.filiale:
-            if instance.statut_doc_id == 2:
-                if TransfertsEntreFiliale.objects.filter(original_id=instance.id).exists():
-                    pass
-                else:
-                    details_transfert = DetailsTransfert.objects.filter(entete=instance.id).all()
-                    new_gtef_obj = GlobalTransfertsEntreFiliale(
-                        id='/'.join((get_current_filiale_prefix(), str(instance.id))),
-                        depuis_filiale_id=instance.depuis_magasin.filiale_id,
-                        vers_filiale_id=instance.vers_magasin.filiale_id,
-                        statut_doc_id=1,)
-                    new_gtef_obj.save()
-
-                    for obj in details_transfert:
-                        new_line = GlobalDetailsTransfertEntreFiliale(
-                            id='/'.join((get_current_filiale_prefix(), str(obj.id))),
-                            entete_id=new_gtef_obj.id,
-                            conformite_id=obj.conformite_id,
-                            produit_id=obj.produit_id,
-                            prix_achat=obj.prix_achat,
-                            prix_vente=obj.prix_vente,
-                            taux_tva=obj.taux_tva,
-                            shp=obj.shp,
-                            ppa_ht=obj.ppa_ht,
-                            n_lot=obj.n_lot,
-                            date_peremption=obj.date_peremption,
-                            colisage=obj.colisage,
-                            poids_boite=obj.poids_boite,
-                            volume_boite=obj.volume_boite,
-                            poids_colis=obj.poids_colis,
-                            qtt=obj.qtt
-                        )
-                        new_line.save()
-
-
 @receiver(post_save, sender=MotifsInventaire, dispatch_uid="add_motif_inventaire_stockinstance")
 def add_motif_inventaire_to_global_data(sender, instance, created, **kwargs):
     if created:
@@ -657,3 +653,210 @@ def add_motif_inventaire_to_global_data(sender, instance, created, **kwargs):
                                          motif_inventaire=instance.motif_inventaire
                                          )
         new_obj.save()
+
+
+# ********************* Signals for transfer between filiales **************************
+
+@receiver(post_save, sender=DetailsTransfertEntreFiliale, dispatch_uid="add_trandferts_entre_filiale_to_stock")
+def add_transfert_entre_filiale_to_stock(sender, instance, created, **kwargs):
+    if created is True:
+        current_filiale = Parametres.objects.get(id=1).filiale
+        if instance.entete.depuis_filiale_id == current_filiale.id:
+            if instance.entete.vers_filiale_id != current_filiale.id:
+                new_id_stock = instance.id
+                new_contenent_type = ContentType.objects.get_for_model(instance).id
+                new_conformite = instance.conformite
+                new_emplacement_id = Parametres.objects.get(id=1).emplacement_achat_id
+                new_produit = instance.produit
+                new_prix_achat = instance.prix_achat
+                new_prix_vente = instance.prix_vente
+                new_taux_tva = instance.taux_tva
+                new_shp = instance.shp
+                new_ppa_ht = instance.ppa_ht
+                new_n_lot = instance.n_lot
+                new_date_peremption = instance.date_peremption
+                new_colisage = instance.colisage
+                new_poids_boite = instance.poids_boite
+                new_volume_boite = instance.volume_boite
+                new_poids_colis = instance.poids_colis
+                new_qtt = instance.qtt * -1
+                new_motif = 'Cession-Out'
+                new_created_by = instance.created_by
+                new_obj = Stock(
+                    id_in_content_type=new_id_stock, content_type=new_contenent_type,
+                    conformite=new_conformite, emplacement_id=new_emplacement_id, produit=new_produit,
+                    prix_achat=new_prix_achat, prix_vente=new_prix_vente, taux_tva=new_taux_tva, shp=new_shp,
+                    ppa_ht=new_ppa_ht, n_lot=new_n_lot, date_peremption=new_date_peremption, colisage=new_colisage,
+                    poids_boite=new_poids_boite, volume_boite=new_volume_boite, poids_colis=new_poids_colis,
+                    qtt=new_qtt, motif=new_motif, created_by=new_created_by
+                )
+                new_obj.save()
+
+
+@receiver(post_delete, sender=DetailsTransfertEntreFiliale, dispatch_uid="delete_transfert_entre_filiale_from_stock")
+def delete_transfert_entre_filiale_from_stock(sender, instance, **kwargs):
+    contenent_type = ContentType.objects.get_for_model(instance).id
+    obj = Stock.objects.get(id_in_content_type=instance.id, content_type=contenent_type)
+    if __name__ == '__main__':
+        if obj:
+            obj.delete()
+            #  En cas de supression d'une ligne de transfert entre filiale, il faux supprimer manuellment dans :
+            #  1 - Lignes transfert de toutes les filiale
+            #  2 - Lignes transfert dans global data
+            #  Et cela impérativement pendant que toutes les filiale sont déconnecté de locapro
+
+
+@receiver(post_save, sender=TransfertsEntreFiliale, dispatch_uid="validate_transfert_entre_filiale")
+def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
+    if created is False:
+        if instance.statut_doc_id == 2:  # 2 to for the statut Conformé
+            if GlobalTransfertsEntreFiliale.objects.filter(id=instance.id).exists():
+                pass  # Transfer already synchronised
+            else:
+                if instance.depuis_filiale_id == Parametres.objects.get(id=1).filiale_id:
+                    if instance.vers_filiale_id != Parametres.objects.get(id=1).filiale_id:
+                        transfert_details = DetailsTransfertEntreFiliale.objects.filter(entete_id=instance.id).all()
+                        # Validate inventory outbound flow (recu = True)
+                        for line in transfert_details:
+                            stock_obj = Stock.objects.get(id_in_content_type=line.id)
+                            stock_obj.recu = True
+                            stock_obj.save()
+                        #  Add validation for Effort-statistics
+
+                        contenent_type = ContentType.objects.get_for_model(instance).id
+                        id_in_content_type = instance.id
+                        linges_count = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id).count()
+                        boites_aggregaion = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id
+                                                                                        ).aggregate(Sum('qtt'))
+                        lignes_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id)
+                        total_qtt = boites_aggregaion['qtt__sum']
+                        type_mouvement = Parametres.objects.get(id=1).process_transfert_entre_filiales
+                        created_by = 1  # 1 pour Admin
+                        colis = 0
+                        colis_en_palette = 0
+                        vrac = 0
+                        for line in lignes_transfert:
+                            if line.colisage != 0:
+                                if line.depuis_emplacement.type_entreposage_id == 1:
+                                    vrac += line.qtt
+                                elif line.depuis_emplacement.type_entreposage_id == 2:
+                                    vrac += line.qtt % line.colisage
+                                    colis += line.qtt // line.colisage
+                                elif line.depuis_emplacement.type_entreposage_id == 3:
+                                    vrac += line.qtt % line.colisage
+                                    colis_en_palette += line.qtt // line.colisage
+                            else:
+                                vrac += line.qtt
+                        validation_check = Validation.objects.filter(
+                            content_type=contenent_type,
+                            id_in_content_type=id_in_content_type
+                        )
+                        if validation_check.exists():
+                            pass
+                        else:
+                            obj = Validation(
+                                content_type=contenent_type,
+                                id_in_content_type=id_in_content_type,
+                                ligne_count=linges_count,
+                                boite_count=total_qtt,
+                                boites_en_vrac=vrac,
+                                colis_count=colis,
+                                colis_en_palette=colis_en_palette,
+                                motif_mvnt=type_mouvement,
+                                created_by_id=created_by,
+                                origin_created_date=instance.created_date,
+                                origine_created_by=instance.created_by
+                            )
+                            obj.save()
+
+                        #  Add validated transfer to Global-transfert-entre-filiale
+                        details_transfert_entre_filiale = DetailsTransfertEntreFiliale.objects.filter(
+                            entete=instance.id).all()
+                        new_gtef_obj = GlobalTransfertsEntreFiliale(
+                            id=instance.id,
+                            depuis_filiale_id=instance.depuis_filiale_id,
+                            vers_filiale_id=instance.vers_filiale_id,
+                            statut_doc_id=2,
+                            )
+                        new_gtef_obj.save()
+                        for obj in details_transfert_entre_filiale:
+                            new_line = GlobalDetailsTransfertEntreFiliale(
+                                    id=obj.id,
+                                    entete_id=new_gtef_obj.id,
+                                    conformite_id=obj.conformite_id,
+                                    produit_id=obj.produit_id,
+                                    prix_achat=obj.prix_achat,
+                                    prix_vente=obj.prix_vente,
+                                    taux_tva=obj.taux_tva,
+                                    shp=obj.shp,
+                                    ppa_ht=obj.ppa_ht,
+                                    n_lot=obj.n_lot,
+                                    date_peremption=obj.date_peremption,
+                                    colisage=obj.colisage,
+                                    poids_boite=obj.poids_boite,
+                                    volume_boite=obj.volume_boite,
+                                    poids_colis=obj.poids_colis,
+                                    qtt=obj.qtt,
+                                )
+                            new_line.save()
+                    else:
+                        pass
+                else:
+                    pass
+
+        elif instance.statut_doc_id == 3:  # 3 for the status Expédié
+            if GlobalTransfertsEntreFiliale.objects.filter(id=instance.id).exists():
+                current_obj = GlobalTransfertsEntreFiliale.objects.get(id=instance.id)
+                if instance.depuis_filiale_id == Parametres.objects.get(id=1).filiale_id:
+                    if instance.vers_filiale_id != Parametres.objects.get(id=1).filiale_id:
+                        if current_obj.statut_doc_id != 3:
+                            current_obj.statut_doc_id = 3
+                            current_obj.save()
+            else:
+                pass
+        elif instance.statut_doc_id == 4:  # 4 to for the status Recu
+            if GlobalTransfertsEntreFiliale.objects.filter(id=instance.id).exists():
+                current_obj = GlobalTransfertsEntreFiliale.objects.get(id=instance.id)
+                if instance.depuis_filiale_id != Parametres.objects.get(id=1).filiale_id:
+                    if instance.vers_filiale_id == Parametres.objects.get(id=1).filiale_id:
+                        if current_obj.statut_doc_id != 4:
+                            current_obj.statut_doc_id = 4
+                            current_obj.save()
+                            ligne_transfert = DetailsTransfertEntreFiliale.objects.filter(entete_id=instance.id)
+                            for line in ligne_transfert:
+                                if Stock.objects.filter(id_in_content_type=line.id).exists():
+                                    pass
+                                else:
+                                    new_id_stock = line.id
+                                    new_contenent_type = ContentType.objects.get_for_model(line).id
+                                    new_conformite_id = line.conformite_id
+                                    new_emplacement_id = Parametres.objects.get(id=1).emplacement_achat_id
+                                    new_produit = line.produit
+                                    new_prix_achat = line.prix_achat
+                                    new_prix_vente = line.prix_vente
+                                    new_taux_tva = line.taux_tva
+                                    new_shp = line.shp
+                                    new_ppa_ht = line.ppa_ht
+                                    new_n_lot = line.n_lot
+                                    new_date_peremption = line.date_peremption
+                                    new_colisage = line.colisage
+                                    new_poids_boite = line.poids_boite
+                                    new_volume_boite = line.volume_boite
+                                    new_poids_colis = line.poids_colis
+                                    new_qtt = line.qtt
+                                    new_motif = 'Cession-In'
+                                    new_created_by = line.created_by
+                                    new_obj = Stock(
+                                        id_in_content_type=new_id_stock, content_type=new_contenent_type,
+                                        conformite_id=new_conformite_id, emplacement_id=new_emplacement_id,
+                                        produit=new_produit,
+                                        prix_achat=new_prix_achat, prix_vente=new_prix_vente, taux_tva=new_taux_tva,
+                                        shp=new_shp,
+                                        ppa_ht=new_ppa_ht, n_lot=new_n_lot, date_peremption=new_date_peremption,
+                                        colisage=new_colisage, poids_boite=new_poids_boite, volume_boite=new_volume_boite,
+                                        poids_colis=new_poids_colis, qtt=new_qtt, recu=True, motif=new_motif,
+                                        created_by=new_created_by
+                                    )
+                                    new_obj.save()
+            else:
+                pass

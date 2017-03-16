@@ -10,8 +10,16 @@
           <option name="port" value="22" />
         </fileTransfer>
       </webServer>
-      <webServer id="898e4860-b26c-4d3f-b637-c7b0723b769f" name="locapro prod" url="http://172.21.2.196">
+      <webServer id="898e4860-b26c-4d3f-b637-c7b0723b769f" name="locapro_os_prod" url="http://172.21.2.196">
         <fileTransfer host="172.21.2.196" port="22" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="e751968a-1cb1-4bf7-8711-fd49e78ce31f" name="locapro_constantine_prod" url="http://172.16.5.32">
+        <fileTransfer host="172.16.5.32" port="22" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>

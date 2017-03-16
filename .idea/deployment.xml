@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="locapro prod" filePermissions="420" folderPermissions="493">
+  <component name="PublishConfigData" serverName="locapro_os_prod" filePermissions="420" folderPermissions="493">
     <serverData>
-      <paths name="locapro prod">
+      <paths name="locapro_constantine_prod">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/var/www/html/wms" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="locapro_os_prod">
         <serverdata>
           <mappings>
             <mapping deploy="/var/www/wms" local="$PROJECT_DIR$/" web="/" />

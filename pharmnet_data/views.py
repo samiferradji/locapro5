@@ -10,7 +10,7 @@ from refereces.models import *
 @permission_required('flux_physique.importer_achats', raise_exception=True)
 @transaction.atomic
 def import_data(request):
-    current_exercice = Parametres.objects.get(id=1).exercice
+    current_exercice = 2017  #TODO standardiser
     default_magasin_picking = Parametres.objects.get(id=1).magasin_picking
     default_emplacement_picking = Emplacement.objects.order_by('id').filter(
         magasin=default_magasin_picking).first().emplacement

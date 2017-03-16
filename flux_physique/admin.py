@@ -86,3 +86,23 @@ admin.site.register(MotifsInventaire)
 admin.site.register(Validation)
 admin.site.register(HistoriqueDuTravail)
 admin.site.register(Parametres)
+@admin.register(TransfertsEntreFiliale)
+class TransfertEntreFilialeAdmin(admin.ModelAdmin):
+    list_display = ['id', 'created_date', 'depuis_filiale', 'vers_filiale', 'statut_doc', 'created_by']
+    list_per_page = 30
+    list_filter = ['depuis_filiale', 'vers_filiale', 'statut_doc']
+    search_fields = ['id']
+
+
+@admin.register(DetailsTransfertEntreFiliale)
+class DetailsTransfertEntreFilialeAdmin(admin.ModelAdmin):
+    list_select_related = ('produit', 'conformite','entete', 'created_by')
+    list_per_page = 30
+    list_display = ['id', 'entete', 'produit','prix_achat', 'prix_vente', 'n_lot', 'date_peremption','colisage',
+                    'taux_tva', 'shp', 'ppa_ht', 'conformite', 'qtt'
+                    ]
+    search_fields = ['entete', 'produit__produit']
+    form = make_ajax_form(DetailsTransfertEntreFiliale, {
+        'produit': 'produits',
+        'entete': 'transferts_entre_filiale'
+    })
