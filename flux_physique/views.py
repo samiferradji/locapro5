@@ -612,9 +612,9 @@ def post_validation(request):
         id_transaction=id_transaction,
         type_transaction=type_transaction,
         created_by=created_by,
-        code_RH1=code_rh1,
-        code_RH2=code_rh2,
-        code_RH3=code_rh3,
+        code_rh1=code_rh1,
+        code_rh2=code_rh2,
+        code_rh3=code_rh3,
     )
 
 

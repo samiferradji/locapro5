@@ -5,7 +5,7 @@ from .models import GlobalFiliale, GlobalAxe, GlobalWilaya, GlobalCommune, Globa
     GlobalDetailsTransfertEntreFiliale
 from refereces.models import Filiale, Axe, Wilaya, Commune, Client, StatutDocument, StatutProduit, \
     FormePharmaceutique, Dci, TypeEntreposage, Founisseur, Laboratoire, Produit, TypesMouvementStock
-from flux_physique.models import MotifsInventaire, TransfertsEntreFiliale, DetailsTransfertEntreFiliale
+from flux_physique.models import MotifsInventaire, TransfertsEntreFiliale, DetailsTransfertEntreFiliale, Parametres
 
 
 def synch_data(request):
@@ -202,7 +202,6 @@ def synch_data(request):
                 current_transfert = TransfertsEntreFiliale.objects.get(id=obj.id)
                 if current_transfert.statut_doc_id == obj.statut_doc_id:
                     pass
-                    current_transfert.save()
                 else:
                     current_transfert.statut_doc_id = obj.statut_doc_id
                     current_transfert.save()
@@ -212,7 +211,9 @@ def synch_data(request):
                     depuis_filiale_id=obj.depuis_filiale_id,
                     vers_filiale_id=obj.vers_filiale_id,
                     statut_doc_id=obj.statut_doc_id,
-                    created_by_id=1
+                    created_by_id=1,
+                    nombre_colis=obj.nombre_colis,
+                    nombre_colis_frigo=obj.nombre_colis_frigo
                 )
                 new_obj.save()
                 details_obj = GlobalDetailsTransfertEntreFiliale.objects.filter(entete_id=obj.id)
@@ -234,7 +235,9 @@ def synch_data(request):
                         volume_boite=line.volume_boite,
                         poids_colis=line.poids_colis,
                         qtt=line.qtt,
-                        created_by_id=1
+                        created_by_id=1,
+                        depuis_emplacement_id=Parametres.objects.get(id=1).emplacement_achat_id,
+                        vers_emplacement_id=Parametres.objects.get(id=1).emplacement_achat_id
                     )
                     new_line.save()
 

@@ -303,16 +303,18 @@ class TransfertsEntreFiliale(BaseModel):
                                        on_delete=models.PROTECT)
     vers_filiale = models.ForeignKey(Filiale, verbose_name='Vers filiale', on_delete=models.PROTECT)
     statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
+    nombre_colis = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° ambiante')
+    nombre_colis_frigo = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° 2 à 8°C')
 
     def __str__(self):
         return str(self.id)
 
     def save(self, *args, **kwargs):
         if not self.id:
-            i = TransfertsEntreFiliale.objects.all().count()
+            curent_filiale= Parametres.objects.get(id=1)
+            i = TransfertsEntreFiliale.objects.filter(depuis_filiale=curent_filiale.filiale).count()
             self._id = i + 1
-            currrent_filiale = Parametres.objects.get(id=1).filiale.prefix_filiale
-            self.id = '-'.join((currrent_filiale, str(self._id)))
+            self.id = '-'.join((str(get_current_year()), curent_filiale.filiale.prefix_filiale, str(self._id)))
         super(TransfertsEntreFiliale, self).save(*args, **kwargs)
 
 
@@ -340,17 +342,51 @@ class DetailsTransfertEntreFiliale(BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            i = DetailsTransfertEntreFiliale.objects.all().count()
+            curent_filiale= Parametres.objects.get(id=1)
+            i = DetailsTransfertEntreFiliale.objects.filter(entete__depuis_filiale=curent_filiale.filiale).count()
+            self._id = i + 1
+            self.id = '-'.join((str(get_current_year()), curent_filiale.filiale.prefix_filiale, str(self._id)))
+        super(DetailsTransfertEntreFiliale, self).save(*args, **kwargs)
+
+
+class ExpeditionTransfertsEntreFiliale(BaseModel):
+    id = models.CharField(max_length=20, primary_key=True, editable=False)
+    vers_filiale = models.ForeignKey(Filiale, verbose_name='Vers filiale', on_delete=models.PROTECT)
+    statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
+    livreur = models.CharField(max_length=50, verbose_name='Livreur ou démarcheur')
+    fourgon = models.CharField(max_length=15, verbose_name='Immatriculation du véhicule')
+
+    def __str__(self):
+        return str(self.id)
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            curent_filiale= Parametres.objects.get(id=1)
+            i = ExpeditionTransfertsEntreFiliale.objects.all().count()
+            self._id = i + 1
+            self.id = '-'.join((str(get_current_year()), curent_filiale.filiale.prefix_filiale, str(self._id)))
+        super(ExpeditionTransfertsEntreFiliale, self).save(*args, **kwargs)
+
+class DetailsExpeditionTransfertsEntreFiliale(BaseModel):
+    id = models.CharField(max_length=20, primary_key=True, editable=False)
+    entete = models.ForeignKey(ExpeditionTransfertsEntreFiliale, verbose_name='Entete', on_delete=models.PROTECT)
+    transfert = models.ForeignKey(TransfertsEntreFiliale, verbose_name='N° du transfert')
+
+    def __str__(self):
+        return str(self.id)
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            i = DetailsExpeditionTransfertsEntreFiliale.objects.all().count()
             self._id = i + 1
             currrent_filiale = Parametres.objects.get(id=1).filiale.prefix_filiale
             self.id = '-'.join((currrent_filiale, str(self._id)))
-        super(DetailsTransfertEntreFiliale, self).save(*args, **kwargs)
+        super(DetailsExpeditionTransfertsEntreFiliale, self).save(*args, **kwargs)
 
 
 def get_current_filiale_prefix():
     current_prefix = Parametres.objects.get(id=1).filiale.prefix_filiale
     return str(current_prefix)
-
 
 @receiver(post_save, sender=DetailsAchatsFournisseur, dispatch_uid="add_achats_to_stock")
 def add_achat_to_stock(sender, instance, created, **kwargs):
@@ -777,6 +813,8 @@ def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
                             depuis_filiale_id=instance.depuis_filiale_id,
                             vers_filiale_id=instance.vers_filiale_id,
                             statut_doc_id=2,
+                            nombre_colis=instance.nombre_colis,
+                            nombre_colis_frigo=instance.nombre_colis_frigo
                             )
                         new_gtef_obj.save()
                         for obj in details_transfert_entre_filiale:
@@ -812,6 +850,7 @@ def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
                         if current_obj.statut_doc_id != 3:
                             current_obj.statut_doc_id = 3
                             current_obj.save()
+                            # TODO signal for expédier , instance new expédition confirmed
             else:
                 pass
         elif instance.statut_doc_id == 4:  # 4 to for the status Recu
@@ -858,5 +897,45 @@ def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
                                         created_by=new_created_by
                                     )
                                     new_obj.save()
-            else:
-                pass
+
+                            # Add validation for Effort-statistics
+
+                            contenent_type = ContentType.objects.get_for_model(instance).id
+                            id_in_content_type = instance.id
+                            linges_count = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id).count()
+                            boites_aggregaion = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id
+                                                                                            ).aggregate(Sum('qtt'))
+                            lignes_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id)
+                            total_qtt = boites_aggregaion['qtt__sum']
+                            type_mouvement = Parametres.objects.get(id=1).process_reception_transfert_entre_filiales
+                            created_by = 1  # 1 pour Admin
+                            colis = 0
+                            colis_en_palette = 0
+                            vrac = 0
+                            for line in lignes_transfert:
+                                if line.colisage != 0:
+                                    vrac += line.qtt % line.colisage
+                                    colis += line.qtt // line.colisage
+                                else:
+                                    vrac += line.qtt
+                            validation_check = Validation.objects.filter(
+                                content_type=contenent_type,
+                                id_in_content_type=id_in_content_type
+                            )
+                            if validation_check.exists():
+                                pass
+                            else:
+                                obj = Validation(
+                                    content_type=contenent_type,
+                                    id_in_content_type=id_in_content_type,
+                                    ligne_count=linges_count,
+                                    boite_count=total_qtt,
+                                    boites_en_vrac=vrac,
+                                    colis_count=colis,
+                                    colis_en_palette=colis_en_palette,
+                                    motif_mvnt=type_mouvement,
+                                    created_by_id=created_by,
+                                    origin_created_date=instance.created_date,
+                                    origine_created_by=instance.created_by
+                                )
+                                obj.save()

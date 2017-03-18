@@ -157,6 +157,8 @@ class GlobalTransfertsEntreFiliale(BaseModel):
                                        on_delete=models.PROTECT)
     vers_filiale = models.ForeignKey(GlobalFiliale, verbose_name='Vers filiale', on_delete=models.PROTECT)
     statut_doc = models.ForeignKey(GlobalStatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
+    nombre_colis = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° ambiante')
+    nombre_colis_frigo = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° 2 à 8°C')
 
     def __str__(self):
         return str(self.id)

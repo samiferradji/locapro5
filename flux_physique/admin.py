@@ -86,6 +86,9 @@ admin.site.register(MotifsInventaire)
 admin.site.register(Validation)
 admin.site.register(HistoriqueDuTravail)
 admin.site.register(Parametres)
+admin.site.register(ExpeditionTransfertsEntreFiliale)
+admin.site.register(DetailsExpeditionTransfertsEntreFiliale)
+
 @admin.register(TransfertsEntreFiliale)
 class TransfertEntreFilialeAdmin(admin.ModelAdmin):
     list_display = ['id', 'created_date', 'depuis_filiale', 'vers_filiale', 'statut_doc', 'created_by']
