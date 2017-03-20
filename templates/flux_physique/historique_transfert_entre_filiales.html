@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load bootstrap3 %}
+     <section class="content-header">
+      <h1>
+        Historique des transferts entre filiales
+      </h1>
+
+    </section>
+
+    <section class="content">
+    <div class="box">
+        <div class="box-header">Double-cliquer pour imprimer</div>
+        <div class="box-body">
+            <table id="tt" ></table>
+            </div>
+        </div>
+    </section>
+    <script>
+    $(document).ready(function () {
+        $('#tt').datagrid({
+            url:"/historique_transferts_entre_filiales/",
+            method:'GET',
+            fitColumns:true,
+            singleSelect:true,
+            striped:true,
+            pagination:true,
+            columns:[[
+            {field:'id',title:'ID',width:40, sortable:true},
+            {field:'created_date',title:'Date de création',width:50, formatter:formatDate, sortable:true},
+            {field:'depuis_filiale__filiale',title:'Depuis filiale',width:50, sortable:true},
+            {field:'vers_filiale__filiale',title:'Vers filiale',width:50, sortable:true},
+            {field:'nombre_colis',title:'Colis',width:30, sortable:true},
+            {field:'nombre_colis_frigo',title:'Colis Frigo',width:30, sortable:true},
+            {field:'statut_doc__statut',title:'Statut',width:50, sortable:true}
+            ]]
+            });
+        function formatDate(value, row){
+                var d = new Date(value);
+                return $.fn.datebox.defaults.formatter(d);
+            }
+        $('#transferts_entre_filiales_menu').addClass('active');
+        $('#historique_mouvement_tef').addClass('active');
+        function update_table() {
+                $('#tt').datagrid('reload')
+        }
+        $('#tt').datagrid({'onDblClickRow':function (intex, obj) {
+            var id_transaction = obj.id;
+            $.post("/print_transfert_entre_filiales/", {
+                        csrfmiddlewaretoken: '{{ csrf_token }}',
+                        id_transaction: id_transaction,
+                        action: 'print_transaction'
+                    }).done(function (data) {
+                        var w = window.open('about:blank', 'windowname');
+                        w.document.write(data.content);
+                        w.document.close()
+                })
+            }})
+
+        })
+
+    </script>
+{% endblock %}

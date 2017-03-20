@@ -14,10 +14,12 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from flux_physique.models import *
 from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm
-from flux_physique.crud import commit_transaction, validate_transaction
+from flux_physique.crud import commit_transaction, validate_transaction, confirmer_transfert_entre_filiale
 from refereces.models import DepuisMagasinsAutorise, Employer
-
-
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+from flux_physique import crud
+from django.views.decorators.csrf import csrf_exempt
 # *************************************************************************************************
 #                                        general views
 # *************************************************************************************************
@@ -744,6 +746,7 @@ def stock_par_magasin(request):
 # *****************************************************************************************************
 
 @ajax
+@permission_required('flux_physique.voir_historique_transferts', raise_exception=True)
 def details_par_mouvement(request):
     if request.method == 'POST':
         categorie = request.POST['categorie']
@@ -989,4 +992,194 @@ def stock_csv(request):
 def rapport_efforts(request):
 
     return render(request,
-                  'rapport.html')
+                  'flux_physique/confirmer_transfert_entre_filiales.html')
+#  **************************************************************************************************
+#  **                            Transferts Entre filiales
+#  **************************************************************************************************
+@login_required(login_url='/login/')
+@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+def confirmer_transferts_entre_filiales(request):
+    current_filiale = Parametres.objects.get(id=1).filiale
+    if request.method == 'POST':
+        id_transaction = request.POST['id_transaction']
+        if request.POST['action'] == 'check_id_transaction':
+            if TransfertsEntreFiliale.objects.filter(
+                    id=id_transaction,
+                    statut_doc_id=1,
+                    depuis_filiale=current_filiale
+            ).exists():
+                return HttpResponse('OK')
+            elif not id_transaction:
+                return HttpResponse('Veuillez saisir ou scanner le numéro du Bon')
+            else:
+                return HttpResponse('N° de Bon erroné !')
+        elif request.POST['action'] == 'confirm_transaction':
+            code_rh_1 = request.POST['code_RH1']
+            code_rh_2 = request.POST['code_RH2']
+            code_rh_3 = request.POST['code_RH3']
+            nombre_colis = request.POST['nombre_colis']
+            nombre_colis_frigo = request.POST['nombre_colis_frigo']
+            user_id = request.POST['created_by']
+
+            response = crud.confirmer_transfert_entre_filiale(
+                id_transaction=id_transaction,
+                code_rh1=code_rh_1,
+                code_rh2=code_rh_2,
+                code_rh3=code_rh_3,
+                nombre_colis=nombre_colis,
+                nombre_colis_frigo=nombre_colis_frigo,
+                created_by_id=user_id)
+
+            return HttpResponse(response)
+    query = TransfertsEntreFiliale.objects.all().select_related().values(
+            'id',
+            'created_date',
+            'depuis_filiale__filiale',
+            'vers_filiale__filiale',
+            'nombre_colis',
+            'nombre_colis_frigo',
+            'statut_doc__statut',
+            'created_by__username'
+            ).filter(statut_doc_id=1, depuis_filiale=current_filiale)
+    response = json.dumps(list(query), cls=DjangoJSONEncoder)
+    return HttpResponse(response, content_type='application/json')
+
+@login_required(login_url='/login/')
+@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+def confirmer_transfert_entre_filiale_view(request):
+    return render(request,
+                  'flux_physique/confirmer_transfert_entre_filiales.html')
+
+@login_required(login_url='/login/')
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+def reception_transferts_entre_filiales(request):
+    current_filiale = Parametres.objects.get(id=1).filiale
+    if request.method == 'POST':
+        id_transaction = request.POST['id_transaction']
+        if request.POST['action'] == 'check_id_transaction':
+            if TransfertsEntreFiliale.objects.filter(
+                    id=id_transaction,
+                    statut_doc_id=3,
+                    vers_filiale=current_filiale
+            ).exists():
+                return HttpResponse('OK')
+            elif not id_transaction:
+                return HttpResponse('Veuillez saisir ou scanner le numéro du Bon')
+            else:
+                return HttpResponse('N° de Bon erroné !')
+        elif request.POST['action'] == 'expedier_transaction':
+            code_rh_1 = request.POST['code_RH1']
+            code_rh_2 = request.POST['code_RH2']
+            code_rh_3 = request.POST['code_RH3']
+            user_id = request.POST['created_by']
+            response = crud.reception_transferts_entre_filiales(
+                id_transaction=id_transaction,
+                code_rh1=code_rh_1,
+                code_rh2=code_rh_2,
+                code_rh3=code_rh_3,
+                created_by_id=user_id
+            )
+            return HttpResponse(response)
+    query = TransfertsEntreFiliale.objects.all().select_related().values(
+            'id',
+            'created_date',
+            'depuis_filiale__filiale',
+            'vers_filiale__filiale',
+            'nombre_colis',
+            'nombre_colis_frigo',
+            'statut_doc__statut',
+            'created_by__username'
+            ).filter(statut_doc_id=3, vers_filiale=current_filiale)
+    response = json.dumps(list(query), cls=DjangoJSONEncoder)
+    return HttpResponse(response, content_type='application/json')
+
+@login_required(login_url='/login/')
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+def reception_transfert_entre_filiale_view(request):
+    return render(request,
+                  'flux_physique/reception_transfert_entre_filiales.html')
+
+@login_required(login_url='/login/')
+@permission_required('flux_physique.exporter_stock', raise_exception=True)
+def historiques_transferts_entre_filiales(request):
+    current_filiale = Parametres.objects.get(id=1).filiale
+    if request.method == 'POST':
+        id_transaction = request.POST['id_transaction']
+        if request.POST['action'] == 'check_id_transaction':
+            if TransfertsEntreFiliale.objects.filter(
+                    id=id_transaction,
+                    statut_doc_id=3,
+                    vers_filiale=current_filiale
+            ).exists():
+                return HttpResponse('OK')
+            elif not id_transaction:
+                return HttpResponse('Veuillez saisir ou scanner le numéro du Bon')
+            else:
+                return HttpResponse('N° de Bon erroné !')
+        elif request.POST['action'] == 'expedier_transaction':
+            code_rh_1 = request.POST['code_RH1']
+            code_rh_2 = request.POST['code_RH2']
+            code_rh_3 = request.POST['code_RH3']
+            user_id = request.POST['created_by']
+            response = crud.reception_transferts_entre_filiales(
+                id_transaction=id_transaction,
+                code_rh1=code_rh_1,
+                code_rh2=code_rh_2,
+                code_rh3=code_rh_3,
+                created_by_id=user_id
+            )
+            return HttpResponse(response)
+    query = TransfertsEntreFiliale.objects.all().select_related().values(
+        'id',
+        'created_date',
+        'depuis_filiale__filiale',
+        'vers_filiale__filiale',
+        'nombre_colis',
+        'nombre_colis_frigo',
+        'statut_doc__statut',
+        'created_by__username'
+        )
+    response = json.dumps(list(query), cls=DjangoJSONEncoder)
+    return HttpResponse(response, content_type='application/json')
+
+@login_required(login_url='/login/')
+@permission_required('flux_physique.voir_historique', raise_exception=True)
+def historique_transfert_entre_filiale_view(request):
+    return render(request,
+                  'flux_physique/historique_transfert_entre_filiales.html')
+
+@ajax
+@login_required(login_url='/login/')
+def print_transfert_entre_filiales(request):
+    type_mouvement = 'Transfert Entre filiale'
+    id_transfert = request.POST['id_transaction']
+    transfert = TransfertsEntreFiliale.objects.get(id=id_transfert)
+    details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=transfert).values(
+        'id',
+        'produit__produit',
+        'produit__dci__dosage',
+        'produit__dci__forme_phrmaceutique__forme',
+        'produit__conditionnement',
+        'n_lot',
+        'date_peremption',
+        'ppa_ht',
+        'depuis_emplacement__emplacement',
+        'vers_emplacement__emplacement',
+        'colisage',
+        'conformite__statut',
+        'qtt'
+    )
+    for obj in details_transfert:
+        if obj['colisage'] != 0:
+            obj['vrac'] = int(obj['qtt']) % int(obj['colisage'])
+            obj['colis'] = int(obj['qtt']) // int(obj['colisage'])
+        else:
+            obj['colis'] = 0
+            obj['vrac'] = obj['qtt']
+    return render(
+        request,
+        'rapports/print_bon_transfert_entre_filiales.html',
+        {
+            'transfer': transfert,
+            'details_transfert': details_transfert,
+            'type_mouvement': type_mouvement})

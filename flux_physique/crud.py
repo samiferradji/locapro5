@@ -313,75 +313,95 @@ def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user
 
 
 @transaction.atomic
-def confirmer_transfert_entre_filiale(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3):
+def confirmer_transfert_entre_filiale(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3, nombre_colis,
+                                      nombre_colis_frigo):
     details_contenent_type = ContentType.objects.get_for_model(DetailsTransfertEntreFiliale).id
     transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
     transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
-    transfert_obj.statut_doc_id = 2
-    transfert_obj.save()
-    id_details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=id_transaction).values_list('id')
-    Stock.objects.filter(content_type=details_contenent_type,
-                         id_in_content_type__in=id_details_transfert).update(recu=True)
-    current_validation = Validation.objects.get(id_in_content_type=id_transaction,
-                                                content_type=transfert_contenent_type)
-    current_validation.created_by_id = created_by_id  # initialised with id = admin
-    current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
-    groupe_list = [code_rh1, code_rh2, code_rh3]
-    groupe_list = list(filter(None, groupe_list))
-    groupe_count = len(groupe_list)
-    for item in groupe_list:
-        employee = Employer.objects.get(code_RH=item)
-        new_execution = HistoriqueDuTravail(
-            employer=employee,
-            groupe=groupe_count,
-            id_validation=current_validation
-        )
-        new_execution.save()
-    return 'OK'
+    if transfert_obj.statut_doc_id == 2:
+        return 'Ce bon est déja validé'
+    elif transfert_obj.depuis_filiale != Parametres.objects.get(id=1).filiale:
+        return 'Vous ne pouvez pas valider ce Bon'
+    else:
+        transfert_obj.statut_doc_id = 2
+        transfert_obj.nombre_colis = nombre_colis
+        transfert_obj.nombre_colis_frigo = nombre_colis_frigo
+        transfert_obj.save()
+        id_details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=id_transaction).values_list('id')
+        if id_details_transfert.exists():
+           Stock.objects.filter(content_type=details_contenent_type,
+                                id_in_content_type__in=id_details_transfert).update(recu=True)
+        current_validation = Validation.objects.get(id_in_content_type=id_transaction,
+                                                    content_type=transfert_contenent_type)
+        current_validation.created_by_id = created_by_id  # initialised with id = admin
+        current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
+        groupe_list = [code_rh1, code_rh2, code_rh3]
+        groupe_list = list(filter(None, groupe_list))
+        groupe_count = len(groupe_list)
+        for item in groupe_list:
+            employee = Employer.objects.get(code_RH=item)
+            new_execution = HistoriqueDuTravail(
+               employer=employee,
+               groupe=groupe_count,
+               id_validation=current_validation
+            )
+            new_execution.save()
+        return 'OK'
 
 
 @transaction.atomic
-def expedition_transferts_entre_filiales(id_transaction, created_by_id, code_RH1, code_RH2, code_RH3):
-    current_contenent_type = ContentType.objects.get_for_model(ExpeditionTransfertsEntreFiliale).id
-    transfert_obj = ExpeditionTransfertsEntreFiliale.objects.get(id=id_transaction)
-    transfert_obj.statut_doc_id = 3
-    transfert_obj.save()
-    current_validation = Validation.objects.get(id_in_content_type=id_transaction,
-                                                content_type=current_contenent_type)
-    current_validation.created_by_id = created_by_id  # initialised with id = admin
-    current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
-    groupe_list = [code_RH1, code_RH2, code_RH3]
-    groupe_list = list(filter(None, groupe_list))
-    groupe_count = len(groupe_list)
-    for item in groupe_list:
-        employee = Employer.objects.get(code_RH=item)
-        new_execution = HistoriqueDuTravail(
-            employer=employee,
-            groupe=groupe_count,
-            id_validation=current_validation
-        )
-        new_execution.save()
-    return 'OK'
+def expedition_transferts_entre_filiales(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3):
+    try :
+        current_contenent_type = ContentType.objects.get_for_model(ExpeditionTransfertsEntreFiliale).id
+        transfert_obj = ExpeditionTransfertsEntreFiliale.objects.get(id=id_transaction)
+        transfert_obj.statut_doc_id = 3
+        transfert_obj.save()
+        current_validation = Validation.objects.get(id_in_content_type=id_transaction,
+                                                    content_type=current_contenent_type)
+        current_validation.created_by_id = created_by_id  # initialised with id = admin
+        current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
+        groupe_list = [code_rh1, code_RH2, code_RH3]
+        groupe_list = list(filter(None, groupe_list))
+        groupe_count = len(groupe_list)
+        for item in groupe_list:
+            employee = Employer.objects.get(code_RH=item)
+            new_execution = HistoriqueDuTravail(
+                employer=employee,
+                groupe=groupe_count,
+                id_validation=current_validation
+            )
+            new_execution.save()
+        return 'OK'
+    except Exception as e :
+        return e
 
 @transaction.atomic
-def reception_transferts_entre_filiales(id_transaction, created_by_id, code_RH1, code_RH2, code_RH3):
-    transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
-    transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
-    transfert_obj.statut_doc_id = 4
-    transfert_obj.save()
-    current_validation = Validation.objects.get(id_in_content_type=id_transaction,
-                                                content_type=transfert_contenent_type)
-    current_validation.created_by_id = created_by_id  # initialised with id = admin
-    current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
-    groupe_list = [code_RH1, code_RH2, code_RH3]
-    groupe_list = list(filter(None, groupe_list))
-    groupe_count = len(groupe_list)
-    for item in groupe_list:
-        employee = Employer.objects.get(code_RH=item)
-        new_execution = HistoriqueDuTravail(
-            employer=employee,
-            groupe=groupe_count,
-            id_validation=current_validation
-        )
-        new_execution.save()
-    return 'OK'
+def reception_transferts_entre_filiales(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3):
+    try:
+        transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
+        transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
+        if transfert_obj.statut_doc_id == 4:
+            return 'Ce bon est déja validé'
+        elif transfert_obj.vers_filiale != Parametres.objects.get(id=1).filiale:
+            return 'Vous ne pouvez pas valider ce Bon'
+        else:
+            transfert_obj.statut_doc_id = 4
+            transfert_obj.save()
+            current_validation = Validation.objects.get(id_in_content_type=id_transaction,
+                                                        content_type=transfert_contenent_type)
+            current_validation.created_by_id = created_by_id  # initialised with id = admin
+            current_validation.save()
+            groupe_list = [code_rh1, code_rh2, code_rh3]
+            groupe_list = list(filter(None, groupe_list))
+            groupe_count = len(groupe_list)
+            for item in groupe_list:
+                employee = Employer.objects.get(code_RH=item)
+                new_execution = HistoriqueDuTravail(
+                    employer=employee,
+                    groupe=groupe_count,
+                    id_validation=current_validation
+                )
+                new_execution.save()
+            return 'OK'
+    except Exception as e:
+        return e

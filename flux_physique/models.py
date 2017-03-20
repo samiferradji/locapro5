@@ -293,7 +293,7 @@ class HistoriqueDuTravail(models.Model):
 
     def __str__(self):
         return ' '.join(
-            (self.employee.__str__(), self.groupe.__str__(), self.type.__str__())
+            (self.employer.__str__(), self.groupe.__str__())
         )
 
 
@@ -305,6 +305,15 @@ class TransfertsEntreFiliale(BaseModel):
     statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
     nombre_colis = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° ambiante')
     nombre_colis_frigo = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° 2 à 8°C')
+
+    class Meta:
+        permissions = (
+            ("ajouter_tef", "Peut ajouter transferts entre filiale"),
+            ("confirmer_tef", "Peut confirmer transferts entre filiale"),
+            ("expedier_tef", "Peut expédier transferts entre filiale"),
+            ("recevoir_tef", "Peut recevoir transferts entre filiale"),
+            ("voir_historique", "Peut voire l'historique des transferts entre filiale"),
+        )
 
     def __str__(self):
         return str(self.id)

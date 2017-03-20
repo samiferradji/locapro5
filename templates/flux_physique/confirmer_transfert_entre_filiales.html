@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% load bootstrap3 %}
 {% block content %}
+{% load bootstrap3 %}
      <section class="content-header">
       <h1>
-        Confirmer une réception d'achats
+        Confirmer un transfert entre filiales
       </h1>
 
     </section>
@@ -12,24 +12,15 @@
      </section>
     <section class="content">
     <div class="box box">
-    <div class="box-header">N° du Bon de réception</div>
+    <div class="box-header">N° du Bon de Transfert entre filiale</div>
         <div class="box-body">
             <input id="n_bon" class="form-control" placeholder="N° du Bon" required>
             </div>
         </div>
     <div class="box">
-        <div class="box-header">Liste des réceptions non validées</div>
+        <div class="box-header">Liste des transfert non confirmés</div>
         <div class="box-body">
-    <table id='mytable' class="table">
-        <th>N°</th>
-        <th>N° BL</th>
-        <th>Date BL</th>
-        <th>Fournisseur</th>
-        <th>N Facture</th>
-        <th>Statut</th>
-        <th>Créer par</th>
-        <th>Observation</th>
-        </table>
+            <table id="tt" ></table>
             </div>
         </div>
     <div id="myModal" class="modal" role="dialog">
@@ -37,7 +28,22 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    <h4 class="modal-title">Exécutants de la transaction</h4>
+                    <h3 class="modal-title">Nombre de colis</h3>
+                    </div>
+                <div class="modal-body">
+                    <div class="row" style="margin-top: 1%">
+                        <div class="col-sm-6">
+                            <label for="nombre_colis">Colis T° ambiante</label>
+                            <input id="nombre_colis" class="form-control" type="number" required>
+                            </div>
+                        <div class="col-sm-6">
+                            <label for="nombre_colis_frigo">Colis T° 2 à 8°C</label>
+                            <input id="nombre_colis_frigo" class="form-control" type="number" required>
+                            </div>
+                    </div></div>
+                <div class="modal-header">
+
+                    <h3 class="modal-title">Exécutants de la transaction</h3>
                     </div>
                 <div class="modal-body">
                     <div class="row" style="margin-top: 1%">
@@ -75,51 +81,49 @@
     </section>
     <script>
     $(document).ready(function () {
-        $('#achats_menu').addClass('active');
-        $('#validation_reception').addClass('active');
+        $('#tt').datagrid({
+            url:"/confirmer_transferts_entre_filiales/",
+            method:'GET',
+            fitColumns:true,
+            singleSelect:true,
+            columns:[[
+            {field:'id',title:'ID',width:40},
+            {field:'created_date',title:'Date de création',width:50, formatter:formatDate},
+            {field:'depuis_filiale__filiale',title:'Depuis filiale',width:50},
+            {field:'vers_filiale__filiale',title:'Vers filiale',width:50},
+            {field:'nombre_colis',title:'Colis',width:30},
+            {field:'nombre_colis_frigo',title:'Colis Frigo',width:30},
+            {field:'statut_doc__statut',title:'Statut',width:50}
+            ]]
+            });
+        function formatDate(value, row){
+                var d = new Date(value);
+                return $.fn.datebox.defaults.formatter(d);
+            }
+        $('#transferts_entre_filiales_menu').addClass('active');
+        $('#confirmer_tef').addClass('active');
         function update_table() {
-            $.getJSON('/receptions-encours/').done(function (content) {
-                $('#mytable').find('td').remove();
-                $('#n_bon').find('option').remove();
-                var trHTML = '';
-                var optionHTML = '';
-                $.each(content.content, function (i, item) {
-                    trHTML += '<tr>'
-                                    +'<td>' + item['id']
-                                    + '</td><td>' + item['n_BL']
-                                    + '</td><td>' + item['date_entree']
-                                    + '</td><td>' + item['fournisseur__nom']
-                                    + '</td><td>' + item['n_FAC']
-                                    + '</td><td>' + item['statut_doc__statut']
-                                    + '</td><td>' + item['created_by__first_name'] +' ' + item['created_by__last_name']
-                                    + '</td><td>' + item['observation']
-                                    + '</td></tr>';
-                    });
-                $('#mytable').append(trHTML);
                 $('input').val('')
                 $('#code-rh1').prop('disabled',false)
                 $('#code-rh2').prop('disabled',false)
                 $('#code-rh3').prop('disabled',false)
                 $('#n_bon').focus();
-                })
-            }
-        update_table()
-        $('#n_bon').focus();
-        $('#n_bon').keypress(function (e) {
+                $('#tt').datagrid('reload')
+        }
+        update_table();
+        $('#n_bon').focus().keypress(function (e) {
                 if (e.which == 13) {
                     var id_transfert = $('#n_bon').val();
-                    $.post("/validate-transaction/", {
+                    $.post("/confirmer_transferts_entre_filiales/", {
                         csrfmiddlewaretoken: '{{ csrf_token }}',
-                        type_transaction: "check_id_achat",
                         id_transaction: id_transfert,
+                        action: 'check_id_transaction'
                     }).done(function (data) {
-                        if (data.content == 'OK') {
-                            e.preventDefault();
-                            $('#add').prop('disabled', false);
+                        if (data == 'OK') {
                             $('#add').click();
                         }
                         else {
-                            $.notify(data.content);
+                            $.notify(data);
                             $('#n_bon').val('');
                         }
                     })
@@ -127,7 +131,35 @@
             })
         $("#add").click(function () {
             $("#myModal").modal({backdrop: "static", keyboard: true});
-            $('#code-rh1').focus()
+            $('#nombre_colis').focus();
+            function validate_nombre_colis() {
+                $('#nombre_colis').keypress(function (e) {
+                    if (e.which == 13) {
+                        var nbr = $('#nombre_colis').val();
+                        if (!nbr) {
+                            $("#nombre_colis").notify('Nombre de colis obligatoire !')
+                        }
+                        else {
+                            $('#nombre_colis').prop('disabled', true);
+                            $('#nombre_colis_frigo').focus();
+                        }
+                    }})
+                };
+            function validate_nombre_colis_frigo() {
+                $('#nombre_colis_frigo').keypress(function (e) {
+                    if (e.which == 13) {
+                        var nbr = $('#nombre_colis_frigo').val();
+                        if (!nbr) {
+                            $("#nombre_colis_frigo").notify('Nombre de colis obligatoire !')
+                        }
+                        else {
+                            $('#nombre_colis_frigo').prop('disabled', true);
+                            $('#code-rh1').focus();
+                        }
+                    }})
+                };
+            validate_nombre_colis();
+            validate_nombre_colis_frigo();
             $('#code-rh1').keypress(function (e) {
                 if (e.which == 13) {
                     var code_RH = $(this).val()
@@ -192,11 +224,11 @@
                         }
                         if (data.content[0] =='OK'){
                             $('#executer3').val(data.content[1]);
+                            $('#ajouter_executants').focus();
                             $('#code-rh3').prop('disabled',true)
                             $('#ajouter_executants').prop('disabled',false)
                         }
                         if (data.content=='VIDE') {
-                            $('#ajouter_executants').focus();
                             $('#code-rh3').prop('disabled',true)
                             $('#ajouter_executants').prop('disabled',false)
                         }
@@ -205,27 +237,37 @@
             })
         })
         $('#ajouter_executants').click(function () {
-            $(this).prop('disabled', true)
+            $(this).prop('disabled', true);
             var code1 = $('#code-rh1').val();
             var code2 = $('#code-rh2').val();
             var code3 = $('#code-rh3').val();
             var id_transaction = $('#n_bon').val();
+            var nombre_colis = $('#nombre_colis').val();
+            var nombre_colis_frigo = $('#nombre_colis_frigo').val();
+
             if (code1) {
-                $.post("/validate-transaction/", {
+                $.post("/confirmer_transferts_entre_filiales/", {
                     csrfmiddlewaretoken: '{{ csrf_token }}',
-                    type_transaction: "reception",
-                    created_by: {{ user.id}},
+                    created_by: {{ user.id }},
                     code_RH1: code1,
                     code_RH2: code2,
                     code_RH3: code3,
                     id_transaction: id_transaction,
-                }).done(function () {
-                    $('#myModal').modal('hide')
-                    update_table();
-                    $.notify('Bon validé', {
-                                className: 'success',
-                                autoHideDelay: 2000,
-                            });
+                    nombre_colis:nombre_colis,
+                    nombre_colis_frigo:nombre_colis_frigo,
+                    action: 'confirm_transaction'
+                }).done(function (data) {
+                    if (data == 'OK') {
+                        $('#myModal').modal('hide');
+                        update_table();
+                        $.notify('Bon confirmé', {
+                            className: 'success',
+                            autoHideDelay: 2000
+                        });
+                    }
+                    else {
+                        $.notify(data)
+                    }
                     $(this).prop('disabled', true)
 
 

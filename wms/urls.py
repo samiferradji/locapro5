@@ -55,8 +55,14 @@ urlpatterns = patterns(
     url(r'^import_facture_client/', import_facture_client),
     url(r'^rapport/', flux_physique_views.rapport_efforts),
     url(r'^sync/', shared_views.synch_data),
-
-    )
+    url(r'^confirmer_transferts_entre_filiales/', flux_physique_views.confirmer_transferts_entre_filiales),
+    url(r'^confirmer_transferts_entre_filiales_view/', flux_physique_views.confirmer_transfert_entre_filiale_view),
+    url(r'^reception_transferts_entre_filiales/', flux_physique_views.reception_transferts_entre_filiales),
+    url(r'^reception_transferts_entre_filiales_view/', flux_physique_views.reception_transfert_entre_filiale_view),
+    url(r'^historique_transferts_entre_filiales/', flux_physique_views.historiques_transferts_entre_filiales),
+    url(r'^historique_transferts_entre_filiales_view/', flux_physique_views.historique_transfert_entre_filiale_view),
+    url(r'print_transfert_entre_filiales/', flux_physique_views.print_transfert_entre_filiales)
+)
 urlpatterns += staticfiles_urlpatterns()
-urlpatterns  += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
