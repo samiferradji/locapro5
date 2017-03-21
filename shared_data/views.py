@@ -260,3 +260,243 @@ def synch_data(request):
 
     return render(request,
                   'rapport.html')
+
+
+def reverse_synch_data(request):
+
+    def sync_filiale():
+        global_objs = Filiale.objects.all()
+        for obj in global_objs:
+            if GlobalFiliale.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalFiliale(id=obj.id,
+                                        filiale=obj.filiale,
+                                        prefix_filiale=obj.prefix_filiale)
+                new_obj.save()
+
+    def sync_wilaya():
+        global_objs = Wilaya.objects.all()
+        for obj in global_objs:
+            if GlobalWilaya.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalWilaya(id=obj.id,
+                                       code_wilaya=obj.code_wilaya,
+                                       wilaya=obj.wilaya
+                                       )
+                new_obj.save()
+
+    def sync_commune():
+        global_objs = Commune.objects.all()
+        for obj in global_objs:
+            if GlobalCommune.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalCommune(id=obj.id,
+                                        code_commune=obj.code_commune,
+                                        commune=obj.commune,
+                                        wilaya_id=obj.wilaya.id
+                                        )
+                new_obj.save()
+
+    def sync_client():
+        global_objs = Client.objects.all()
+        for obj in global_objs:
+            if GlobalClient.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalClient(id=obj.id,
+                                       dossier=obj.dossier,
+                                       nom_prenom=obj.nom_prenom,
+                                       adresse=obj.adresse,
+                                       commune_id=obj.commune_id,
+                                       telephone=obj.telephone
+                                       )
+                new_obj.save()
+
+    def sync_statuts_document():
+        global_objs = StatutDocument.objects.all()
+        for obj in global_objs:
+            if GlobalStatutDocument.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalStatutDocument(id=obj.id,
+                                               statut=obj.statut
+                                               )
+                new_obj.save()
+
+    def sync_statuts_produit():
+        global_objs = StatutProduit.objects.all()
+        for obj in global_objs:
+            if GlobalStatutProduit.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalStatutProduit(id=obj.id,
+                                              statut=obj.statut
+                                              )
+                new_obj.save()
+
+    def sync_formes_pharmaceutique():
+        global_objs = FormePharmaceutique.objects.all()
+        for obj in global_objs:
+            if GlobalFormePharmaceutique.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalFormePharmaceutique(id=obj.id,
+                                                    forme=obj.forme
+                                                    )
+                new_obj.save()
+
+    def sync_dcis():
+        global_objs = Dci.objects.all()
+        for obj in global_objs:
+            if GlobalDci.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalDci(id=obj.id,
+                                    code_dci=obj.code_dci,
+                                    dci=obj.dci,
+                                    forme_phrmaceutique_id=obj.forme_phrmaceutique_id,
+                                    dosage=obj.dosage
+                                    )
+                new_obj.save()
+
+    def sync_types_entreposage():
+        global_objs = TypeEntreposage.objects.all()
+        for obj in global_objs:
+            if GlobalTypeEntreposage.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalTypeEntreposage(id=obj.id,
+                                                type_entreposage=obj.type_entreposage
+                                                )
+                new_obj.save()
+
+    def sync_fournisseur():
+        global_objs = Founisseur.objects.all()
+        for obj in global_objs:
+            if GlobalFounisseur.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalFounisseur(id=obj.id,
+                                           dossier=obj.dossier,
+                                           nom=obj.nom
+                                           )
+                new_obj.save()
+
+    def sync_laboratoire():
+        global_objs = Laboratoire.objects.all()
+        for obj in global_objs:
+            if GlobalLaboratoire.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalLaboratoire(id=obj.id,
+                                            dossier=obj.dossier,
+                                            nom=obj.nom
+                                            )
+                new_obj.save()
+
+    def sync_produit():
+        global_objs = Produit.objects.all()
+        for obj in global_objs:
+            if GlobalProduit.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalProduit(id=obj.id,
+                                        code=obj.code,
+                                        produit=obj.produit,
+                                        dci_id=obj.dci_id,
+                                        conditionnement=obj.conditionnement,
+                                        a_rique=obj.a_rique,
+                                        psychotrope=obj.psychotrope,
+                                        thermosensible=obj.thermosensible,
+                                        poids=obj.poids,
+                                        volume=obj.volume,
+                                        poids_colis=obj.poids_colis,
+                                        laboratoire_id=obj.laboratoire_id,
+                                        )
+                new_obj.save()
+
+    def sync_type_mvt_stock():
+        global_objs = TypesMouvementStock.objects.all()
+        for obj in global_objs:
+            if GlobalTypesMouvementStock.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalTypesMouvementStock(id=obj.id,
+                                                    type=obj.type,
+                                                    description=obj.description)
+                new_obj.save()
+
+    def sync_motifs_inventaire():
+        global_objs = MotifsInventaire.objects.all()
+        for obj in global_objs:
+            if GlobalMotifsInventaire.objects.filter(id=obj.id).exists():
+                pass
+            else:
+                new_obj = GlobalMotifsInventaire(id=obj.id,
+                                                 motif_inventaire=obj.motif_inventaire)
+                new_obj.save()
+
+    def sync_transfert_entre_filiale():
+        global_objs = TransfertsEntreFiliale.objects.all().exclude(statut_doc_id=1)
+        for obj in global_objs:
+            if GlobalTransfertsEntreFiliale.objects.filter(id=obj.id).exists():
+                current_transfert = GlobalTransfertsEntreFiliale.objects.get(id=obj.id)
+                if current_transfert.statut_doc_id == obj.statut_doc_id:
+                    pass
+                else:
+                    current_transfert.statut_doc_id = obj.statut_doc_id
+                    current_transfert.save()
+            else:
+                new_obj = GlobalTransfertsEntreFiliale(
+                    id=obj.id,
+                    depuis_filiale_id=obj.depuis_filiale_id,
+                    vers_filiale_id=obj.vers_filiale_id,
+                    statut_doc_id=obj.statut_doc_id,
+                    nombre_colis=obj.nombre_colis,
+                    nombre_colis_frigo=obj.nombre_colis_frigo
+                )
+                new_obj.save()
+                details_obj = DetailsTransfertEntreFiliale.objects.filter(entete_id=obj.id)
+                for line in details_obj:
+                    new_line = GlobalDetailsTransfertEntreFiliale(
+                        id=line.id,
+                        entete_id=obj.id,
+                        conformite_id=line.conformite_id,
+                        produit_id=line.produit_id,
+                        prix_achat=line.prix_achat,
+                        prix_vente=line.prix_vente,
+                        taux_tva=line.taux_tva,
+                        shp=line.shp,
+                        ppa_ht=line.ppa_ht,
+                        n_lot=line.n_lot,
+                        date_peremption=line.date_peremption,
+                        colisage=line.colisage,
+                        poids_boite=line.poids_boite,
+                        volume_boite=line.volume_boite,
+                        poids_colis=line.poids_colis,
+                        qtt=line.qtt,
+
+                    )
+                    new_line.save()
+
+    sync_filiale()
+    sync_wilaya()
+    sync_commune()
+    sync_client()
+    sync_statuts_document()
+    sync_statuts_produit()
+    sync_formes_pharmaceutique()
+    sync_dcis()
+    sync_types_entreposage()
+    sync_laboratoire()
+    sync_fournisseur()
+    sync_produit()
+    sync_type_mvt_stock()
+    sync_motifs_inventaire()
+    sync_transfert_entre_filiale()
+
+    return render(request,
+                  'rapport.html')

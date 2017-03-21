@@ -851,7 +851,6 @@ def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
                         pass
                 else:
                     pass
-
         elif instance.statut_doc_id == 3:  # 3 for the status Expédié
             if GlobalTransfertsEntreFiliale.objects.filter(id=instance.id).exists():
                 current_obj = GlobalTransfertsEntreFiliale.objects.get(id=instance.id)
@@ -860,7 +859,56 @@ def validate_transfert_entre_filiale(sender, instance, created, **kwargs):
                         if current_obj.statut_doc_id != 3:
                             current_obj.statut_doc_id = 3
                             current_obj.save()
-                            # TODO signal for expédier , instance new expédition confirmed
+
+                            # Add validation for Effort-statistics
+                            new_expedition = ExpeditionTransfertsEntreFiliale(
+                                id=instance.id,
+                                created_by_id=1, # 1 for admin
+                                statut_doc_id=2,
+                                vers_filiale_id=instance.vers_filiale_id,
+                                fourgon='-',
+                                livreur='-'
+                            )
+                            new_expedition.save()
+                            contenent_type = ContentType.objects.get_for_model(ExpeditionTransfertsEntreFiliale).id
+                            id_in_content_type = new_expedition.id
+                            linges_count = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id).count()
+                            boites_aggregaion = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id
+                                                                                            ).aggregate(Sum('qtt'))
+                            lignes_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=instance.id)
+                            total_qtt = boites_aggregaion['qtt__sum']
+                            type_mouvement = Parametres.objects.get(id=1).process_expedition_transfert_entre_filiales
+                            created_by = 1  # 1 pour Admin
+                            colis = 0
+                            colis_en_palette = 0
+                            vrac = 0
+                            for line in lignes_transfert:
+                                if line.colisage != 0:
+                                    vrac += line.qtt % line.colisage
+                                    colis += line.qtt // line.colisage
+                                else:
+                                    vrac += line.qtt
+                            validation_check = Validation.objects.filter(
+                                content_type=contenent_type,
+                                id_in_content_type=id_in_content_type
+                            )
+                            if validation_check.exists():
+                                pass
+                            else:
+                                obj = Validation(
+                                    content_type=contenent_type,
+                                    id_in_content_type=id_in_content_type,
+                                    ligne_count=linges_count,
+                                    boite_count=total_qtt,
+                                    boites_en_vrac=vrac,
+                                    colis_count=colis,
+                                    colis_en_palette=colis_en_palette,
+                                    motif_mvnt=type_mouvement,
+                                    created_by_id=created_by,
+                                    origin_created_date=instance.created_date,
+                                    origine_created_by=instance.created_by
+                                )
+                                obj.save()
             else:
                 pass
         elif instance.statut_doc_id == 4:  # 4 to for the status Recu

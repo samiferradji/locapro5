@@ -3,7 +3,7 @@
 {% load bootstrap3 %}
      <section class="content-header">
       <h1>
-        Réception des transferts entre filiales
+        Expédier un transfert entre filiales
       </h1>
 
     </section>
@@ -26,6 +26,21 @@
     <div id="myModal" class="modal" role="dialog">
         <div class="modal-dialog modal-md">
             <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h3 class="modal-title">Informations démarcheur et fourgon</h3>
+                    </div>
+                <div class="modal-body">
+                    <div class="row" style="margin-top: 1%">
+                        <div class="col-sm-6">
+                            <label for="livreur">Nom et Prénom du démarcheur</label>
+                            <input id="livreur" class="form-control" type="text" required>
+                            </div>
+                        <div class="col-sm-6">
+                            <label for="fourgon">Immatriculation du véhicule</label>
+                            <input id="fourgon" class="form-control" type="text" required>
+                            </div>
+                    </div></div>
                 <div class="modal-header">
 
                     <h3 class="modal-title">Exécutants de la transaction</h3>
@@ -67,7 +82,7 @@
     <script>
     $(document).ready(function () {
         $('#tt').datagrid({
-            url:"/reception_transferts_entre_filiales/",
+            url:"/expedition_transferts_entre_filiales/",
             method:'GET',
             fitColumns:true,
             singleSelect:true,
@@ -86,7 +101,7 @@
                 return $.fn.datebox.defaults.formatter(d);
             }
         $('#transferts_entre_filiales_menu').addClass('active');
-        $('#reception_tef').addClass('active');
+        $('#expedier_tef').addClass('active');
         function update_table() {
                 $('input').val('')
                 $('#code-rh1').prop('disabled',false);
@@ -99,7 +114,7 @@
         $('#n_bon').focus().keypress(function (e) {
                 if (e.which == 13) {
                     var id_transfert = $('#n_bon').val();
-                    $.post("/reception_transferts_entre_filiales/", {
+                    $.post("/expedition_transferts_entre_filiales/", {
                         csrfmiddlewaretoken: '{{ csrf_token }}',
                         id_transaction: id_transfert,
                         action: 'check_id_transaction'
@@ -115,8 +130,37 @@
                 }
             });
         $("#add").click(function () {
+            function validate_fourgon() {
+                $('#fourgon').keypress(function (e) {
+                    if (e.which == 13) {
+                        var nbr = $('#fourgon').val();
+                        if (!nbr) {
+                            $("#fourgon").notify('Champs obligatoire !')
+                        }
+                        else {
+                            $('#fourgon').prop('disabled', true);
+                            $('#code-rh1').focus();
+                        }
+                    }})
+                };
+            function validate_livreur() {
+                $('#livreur').keypress(function (e) {
+                    if (e.which == 13) {
+                        var nbr = $('#livreur').val();
+                        if (!nbr) {
+                            $("#livreur").notify('Champs obligatoire !')
+                        }
+                        else {
+                            $('#livreur').prop('disabled', true);
+                            $('#fourgon').focus();
+                        }
+                    }})
+                };
+            validate_livreur();
+            validate_fourgon();
             $("#myModal").modal({backdrop: "static", keyboard: true});
-            $("#code-rh1").focus().keypress(function (e) {
+            $('#livreur').focus();
+            $("#code-rh1").keypress(function (e) {
                 if (e.which == 13) {
                     var code_RH = $(this).val();
                     $.getJSON('/get_employee_name/',{'code_RH': code_RH},function (data) {
@@ -197,20 +241,24 @@
             var code2 = $('#code-rh2').val();
             var code3 = $('#code-rh3').val();
             var id_transaction = $('#n_bon').val();
+            var livreur = $("#livreur").val();
+            var fourgon = $('#fourgon').val();
             if (code1) {
-                $.post("/reception_transferts_entre_filiales/", {
+                $.post("/expedition_transferts_entre_filiales/", {
                     csrfmiddlewaretoken: '{{ csrf_token }}',
                     created_by: {{ user.id }},
                     code_RH1: code1,
                     code_RH2: code2,
                     code_RH3: code3,
                     id_transaction: id_transaction,
-                    action: 'reception_transaction'
+                    livreur: livreur,
+                    fourgon:fourgon,
+                    action: 'expedier_transaction'
                 }).done(function (data) {
                     if (data == 'OK') {
                         $('#myModal').modal('hide');
                         update_table();
-                        $.notify('Transfert reçu', {
+                        $.notify('Transfert expédié', {
                             className: 'success',
                             autoHideDelay: 2000
                         });

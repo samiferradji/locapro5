@@ -148,7 +148,7 @@ class Produit(models.Model):
     psychotrope = models.BooleanField(verbose_name='Produit psychotrope', default=False)
     a_rique = models.BooleanField(verbose_name='Produit à risque', default=False)
     prelevement = models.ForeignKey(Emplacement, verbose_name='Emplacement de prélèvement', null=True,
-                                    on_delete=models.PROTECT, default=1)
+                                    on_delete=models.PROTECT)
     seuil_min = models.IntegerField(verbose_name='Stock Min', default=50)
     seuil_max = models.IntegerField(verbose_name='Stock MAx', default=200)
     type_entreposage = models.ForeignKey(TypeEntreposage, null=True, blank=True)

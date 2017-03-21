@@ -1133,7 +1133,7 @@ def reception_transferts_entre_filiales(request):
                 return HttpResponse('Veuillez saisir ou scanner le numéro du Bon')
             else:
                 return HttpResponse('N° de Bon erroné !')
-        elif request.POST['action'] == 'expedier_transaction':
+        elif request.POST['action'] == 'reception_transaction':
             code_rh_1 = request.POST['code_RH1']
             code_rh_2 = request.POST['code_RH2']
             code_rh_3 = request.POST['code_RH3']
@@ -1162,6 +1162,7 @@ def reception_transferts_entre_filiales(request):
 
 #@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def reception_transfert_entre_filiale_view(request):
+    crud.synch_data()
     return render(request,
                   'flux_physique/reception_transfert_entre_filiales.html')
 
@@ -1211,6 +1212,7 @@ def historiques_transferts_entre_filiales(request):
 
 #@permission_required('flux_physique.voir_historique', raise_exception=True)
 def historique_transfert_entre_filiale_view(request):
+    crud.synch_data()
     return render(request,
                   'flux_physique/historique_transfert_entre_filiales.html')
 
@@ -1263,3 +1265,56 @@ def add_transfert_entre_fililales(request):
     return render(request, 'flux_physique/add_transfert_entre_filiale.html',
                   {'form': form, 'product_form': product_form, 'user': user, 'username': username})
 
+
+#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+def expedition_transferts_entre_filiales(request):
+    current_filiale = Parametres.objects.get(id=1).filiale
+    if request.method == 'POST':
+        if request.POST['action'] == 'check_id_transaction':
+            id_transaction = request.POST['id_transaction']
+            if TransfertsEntreFiliale.objects.filter(
+                    id=id_transaction,
+                    statut_doc_id=2,
+                    depuis_filiale=current_filiale
+            ).exists():
+                return HttpResponse('OK')
+            elif not id_transaction:
+                return HttpResponse('Veuillez saisir ou scanner le numéro du Bon')
+            else:
+                return HttpResponse('N° de Bon erroné !')
+        elif request.POST['action'] == 'expedier_transaction':
+            id_transaction = request.POST['id_transaction']
+            code_rh_1 = request.POST['code_RH1']
+            code_rh_2 = request.POST['code_RH2']
+            code_rh_3 = request.POST['code_RH3']
+            fourgon = request.POST['fourgon']
+            livreur = request.POST['livreur']
+            user_id = request.POST['created_by']
+            response = crud.expedition_transferts_entre_filiales(
+                id_transaction=id_transaction,
+                code_rh1=code_rh_1,
+                code_rh2=code_rh_2,
+                code_rh3=code_rh_3,
+                created_by_id=user_id,
+                fourgon=fourgon,
+                livreur=livreur
+            )
+            return HttpResponse(response)
+    query = TransfertsEntreFiliale.objects.all().select_related().values(
+            'id',
+            'created_date',
+            'depuis_filiale__filiale',
+            'vers_filiale__filiale',
+            'nombre_colis',
+            'nombre_colis_frigo',
+            'statut_doc__statut',
+            'created_by__username'
+            ).filter(statut_doc_id=2, depuis_filiale=current_filiale).order_by('created_date').reverse()
+    response = json.dumps(list(query), cls=DjangoJSONEncoder)
+    return HttpResponse(response, content_type='application/json')
+
+
+#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+def expedition_transfert_entre_filiale_view(request):
+    return render(request,
+                  'flux_physique/expedition_transfert_entre_filiales.html')

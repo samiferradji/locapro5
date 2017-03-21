@@ -10,7 +10,6 @@ from ajax_select import urls as ajax_select_urls
 from shared_data import views as shared_views
 
 
-
 admin.autodiscover()
 
 urlpatterns = patterns(
@@ -30,7 +29,8 @@ urlpatterns = patterns(
     url(r'^qtt-disponible/', flux_physique_views.qtt_disponible, name='qtt-disponible'),
     url(r'^print_transfert/', flux_physique_views.print_transfert, name='print'),
     url(r'^print_entreposage/', flux_physique_views.print_entreposage, name='print-entreposage'),
-    url(r'^validate-transaction-view/', flux_physique_views.validate_transaction_view, name='validate_transaction_view'),
+    url(r'^validate-transaction-view/', flux_physique_views.validate_transaction_view,
+        name='validate_transaction_view'),
     url(r'^validate-reception-view/', flux_physique_views.validate_receptipon_view, name='validate_reception_view'),
     url(r'^validate-transaction/', flux_physique_views.post_validation, name='validate_transaction'),
     url(r'^transactions-encours/', flux_physique_views.transactions_encours, name='transactions_encours'),
@@ -38,8 +38,10 @@ urlpatterns = patterns(
     url(r'^get_employee_name/', flux_physique_views.return_emplyee_by_coderh, name='get_employee_name'),
     url(r'^add-entreposage/', flux_physique_views.add_entreposage, name='add-entreposage'),
     url(r'^add-sortie-colis/', flux_physique_views.add_sortie_en_colis, name='add-sortie-en-colis'),
-    url(r'^add-entreposage-reservation/', flux_physique_views.add_entreposage_reservation, name='add-entreposage-reservation'),
-    url(r'^entreposage-reservation-table/', flux_physique_views.entreposage_reservation_table, name='entreposage-reservation-table'),
+    url(r'^add-entreposage-reservation/', flux_physique_views.add_entreposage_reservation,
+        name='add-entreposage-reservation'),
+    url(r'^entreposage-reservation-table/', flux_physique_views.entreposage_reservation_table,
+        name='entreposage-reservation-table'),
     url(r'^entreposage-add-ligne-reservation/', flux_physique_views.entreposage_add_ligne_reservation,
         name='entreposage-add-ligne-reservation'),
     url(r'^raport-stock/', flux_physique_views.stock_par_magasin, name='raport-stock'),
@@ -55,6 +57,7 @@ urlpatterns = patterns(
     url(r'^import_facture_client/', import_facture_client),
     url(r'^rapport/', flux_physique_views.rapport_efforts),
     url(r'^sync/', shared_views.synch_data),
+    url(r'^reverse_sync/', shared_views.reverse_synch_data),
     url(r'^confirmer_transferts_entre_filiales/', flux_physique_views.confirmer_transferts_entre_filiales),
     url(r'^confirmer_transferts_entre_filiales_view/', flux_physique_views.confirmer_transfert_entre_filiale_view),
     url(r'^reception_transferts_entre_filiales/', flux_physique_views.reception_transferts_entre_filiales),
@@ -63,6 +66,8 @@ urlpatterns = patterns(
     url(r'^historique_transferts_entre_filiales_view/', flux_physique_views.historique_transfert_entre_filiale_view),
     url(r'^print_transfert_entre_filiales/', flux_physique_views.print_transfert_entre_filiales),
     url(r'^add_transfert_entre_filiales/', flux_physique_views.add_transfert_entre_fililales),
+    url(r'^expedition_transferts_entre_filiales/', flux_physique_views.expedition_transferts_entre_filiales),
+    url(r'^expedition_transferts_entre_filiales_view/', flux_physique_views.expedition_transfert_entre_filiale_view),
     )
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
