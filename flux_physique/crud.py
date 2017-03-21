@@ -572,7 +572,7 @@ def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user
 
 
 
-#@transaction.atomic
+@transaction.atomic
 def confirmer_transfert_entre_filiale(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3, nombre_colis,
                                       nombre_colis_frigo):
     try:

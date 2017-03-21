@@ -1061,7 +1061,7 @@ def rapport_efforts(request):
 #  **                            Transferts Entre filiales
 #  **************************************************************************************************
 
-#@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+@permission_required('flux_physique.confirmer_tef', raise_exception=True)
 @csrf_exempt
 def confirmer_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
@@ -1111,13 +1111,13 @@ def confirmer_transferts_entre_filiales(request):
     return HttpResponse(response, content_type='application/json')
 
 
-#@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+@permission_required('flux_physique.confirmer_tef', raise_exception=True)
 def confirmer_transfert_entre_filiale_view(request):
     return render(request,
                   'flux_physique/confirmer_transfert_entre_filiales.html')
 
 
-#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def reception_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
@@ -1160,14 +1160,14 @@ def reception_transferts_entre_filiales(request):
     return HttpResponse(response, content_type='application/json')
 
 
-#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def reception_transfert_entre_filiale_view(request):
     crud.synch_data()
     return render(request,
                   'flux_physique/reception_transfert_entre_filiales.html')
 
 
-#@permission_required('flux_physique.exporter_stock', raise_exception=True)
+@permission_required('flux_physique.exporter_stock', raise_exception=True)
 def historiques_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
@@ -1210,9 +1210,8 @@ def historiques_transferts_entre_filiales(request):
     return HttpResponse(response, content_type='application/json')
 
 
-#@permission_required('flux_physique.voir_historique', raise_exception=True)
+@permission_required('flux_physique.voir_historique', raise_exception=True)
 def historique_transfert_entre_filiale_view(request):
-    crud.synch_data()
     return render(request,
                   'flux_physique/historique_transfert_entre_filiales.html')
 
@@ -1266,7 +1265,7 @@ def add_transfert_entre_fililales(request):
                   {'form': form, 'product_form': product_form, 'user': user, 'username': username})
 
 
-#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def expedition_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
@@ -1314,7 +1313,7 @@ def expedition_transferts_entre_filiales(request):
     return HttpResponse(response, content_type='application/json')
 
 
-#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def expedition_transfert_entre_filiale_view(request):
     return render(request,
                   'flux_physique/expedition_transfert_entre_filiales.html')
