@@ -303,8 +303,8 @@ class TransfertsEntreFiliale(BaseModel):
                                        on_delete=models.PROTECT)
     vers_filiale = models.ForeignKey(Filiale, verbose_name='Vers filiale', on_delete=models.PROTECT)
     statut_doc = models.ForeignKey(StatutDocument, verbose_name='Statut du transfert', on_delete=models.PROTECT)
-    nombre_colis = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° ambiante')
-    nombre_colis_frigo = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° 2 à 8°C')
+    nombre_colis = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° ambiante', default=0)
+    nombre_colis_frigo = models.PositiveSmallIntegerField(verbose_name='Nombre de colis T° 2 à 8°C', default=0)
 
     class Meta:
         permissions = (
@@ -324,6 +324,7 @@ class TransfertsEntreFiliale(BaseModel):
             i = TransfertsEntreFiliale.objects.filter(depuis_filiale=curent_filiale.filiale).count()
             self._id = i + 1
             self.id = '-'.join((str(get_current_year()), curent_filiale.filiale.prefix_filiale, str(self._id)))
+            self.created_date = timezone.now()
         super(TransfertsEntreFiliale, self).save(*args, **kwargs)
 
 

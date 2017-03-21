@@ -132,7 +132,8 @@
                 {
                     key_words: key_words,
                     current_magasin_id:current_magasin_id,
-                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    filter:'magasins'
                 }
                 )
                 .done(
@@ -287,8 +288,9 @@
                 var current_magasin = $('#depuis_magasin_select').val()
                 var current_produit = $(this).val();
                 $.getJSON('/stock-disponible/', {
-                    'current_produit': current_produit,
-                    'current_magasin': current_magasin
+                    current_produit: current_produit,
+                    current_magasin: current_magasin,
+                    filter:'magasins'
                 }).done(function (dispo_data) {
                     var mydata = dispo_data.content;
                     $('#cg').combogrid({
@@ -298,6 +300,7 @@
                         textField: 'n_lot',
                         mode: 'local',
                         fitColumns: true,
+                        selectOnNavigation:false,
                         columns: [[
                             {field: 'n_lot', title: 'Lot', width: 90},
                             {field: 'date_peremption', title: 'DDP', width: 100},
@@ -322,7 +325,7 @@
                             }
                         });
                     $('#cg').combogrid({
-                        'onHidePanel': function () {
+                        'onSelect': function () {
                             var current_id_stock = $('#cg').combogrid('getValue');
                             var current_id_stock_int = current_id_stock;
                             $.getJSON("/qtt-disponible/",

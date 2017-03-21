@@ -248,7 +248,6 @@
             if (code1) {
                 $.post("/confirmer_transferts_entre_filiales/", {
                     csrfmiddlewaretoken: '{{ csrf_token }}',
-                    created_by: {{ user.id }},
                     code_RH1: code1,
                     code_RH2: code2,
                     code_RH3: code3,
@@ -266,7 +265,7 @@
                         });
                     }
                     else {
-                        $.notify(data)
+                        alert(data)
                     }
                     $(this).prop('disabled', true)
 

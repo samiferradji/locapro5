@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from django.contrib.auth.forms import AuthenticationForm
 from django.forms import ModelForm, TextInput, Select
-from refereces.models import Magasin, DepuisMagasinsAutorise, VersMagasinsAutorise
-from flux_physique.models import Transfert, Stock, DetailsTransfert, Produit, StatutDocument
+from refereces.models import Magasin
+from flux_physique.models import Transfert, Stock, Produit, StatutDocument, TransfertsEntreFiliale, Parametres
 from django import forms
 
 
@@ -61,3 +61,16 @@ class EntreposageModelForm(ModelForm):
         super(EntreposageModelForm, self).__init__(**kwargs)
         if user:
             self.fields['depuis_magasin'].queryset = Magasin.objects.filter(depuismagasinsautorise__user=user)
+
+
+class TransfertEntreFilialesModelForm(ModelForm):
+
+    class Meta:
+        default_statut_doc = StatutDocument.objects.order_by('id').first()
+        model = TransfertsEntreFiliale
+        fields = ('depuis_filiale','vers_filiale','statut_doc','created_by')
+        widgets = {
+            'depuis_filiale': Select(attrs={'id': 'depuis_filiale_select', }),
+            'vers_filiale': Select(attrs={'id': 'vers_filiale_select', }),
+            'statut_doc': TextInput(attrs={'id': 'statut_doc', 'value': default_statut_doc}),
+        }

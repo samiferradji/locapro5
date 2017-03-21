@@ -13,7 +13,8 @@ from django.contrib.auth import logout
 from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from flux_physique.models import *
-from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm
+from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm, \
+    TransfertEntreFilialesModelForm
 from flux_physique.crud import commit_transaction, validate_transaction, confirmer_transfert_entre_filiale
 from refereces.models import DepuisMagasinsAutorise, Employer
 import json
@@ -42,11 +43,18 @@ def logout_view(request):
 def produits_par_magasin(request):
     key_words = request.POST['key_words']
     key_words_list = key_words.split(' ')
-    current_magasin_id = int(request.POST['current_magasin_id'])
-    queryset = Stock.objects.all().distinct().values('produit_id', 'produit__produit').filter(
-        reduce(operator.and_, (Q(produit__produit__icontains=x) for x in key_words_list))).filter(
-        emplacement__magasin_id=current_magasin_id).order_by('produit__produit')
-    return queryset
+    usre_filter = request.POST['filter']
+    if usre_filter == 'all':
+        queryset = Stock.objects.all().distinct().values('produit_id', 'produit__produit').filter(
+            reduce(operator.and_, (Q(produit__produit__icontains=x) for x in key_words_list))
+        ).order_by('produit__produit')
+        return queryset
+    elif usre_filter == 'magasins':
+        current_magasin_id = int(request.POST['current_magasin_id'])
+        queryset = Stock.objects.all().distinct().values('produit_id', 'produit__produit').filter(
+            reduce(operator.and_, (Q(produit__produit__icontains=x) for x in key_words_list))).filter(
+            emplacement__magasin_id=current_magasin_id).order_by('produit__produit')
+        return queryset
 
 
 @ajax
@@ -339,7 +347,8 @@ def add_ligne_reservation(request):
                     form.save()
                     return 'OK'
                 else:
-                    return [form.errors]
+                    print(form.errors)
+                    return 'form problem'
             else:
                 return check_qtt_disponible(id_stock=id_stock, qtt=qtt)
 
@@ -373,6 +382,16 @@ def add_ligne_reservation(request):
                 vers_magasin=vers_magasin,
                 entete_tempo=entete_tempo,
                 motif=motif
+            )
+            return saved
+        elif request.POST['action'] == 'save_transfert_entre_filiales':
+            user = request.user
+            entete_tempo = int(request.POST['current_entete'])
+            vers_filiale = int(request.POST['vers_filiale'])
+            saved = crud.ajouter_transfert_entre_filiale(
+                vers_filiale_id=vers_filiale,
+                entete_reservation_id=entete_tempo,
+                user_id=user.id
             )
             return saved
         elif request.POST['action'] == 'save_entreposage':
@@ -436,51 +455,97 @@ def reservation_table(request):
 @login_required(login_url='/login/')
 @ajax
 def stock_disponible(request):
-    product_id = request.GET['current_produit']
-    current_magasin = request.GET.get('current_magasin', None)
-    user = request.user.id
-    current_status_produit = StatutProduit.objects.filter(statutsautorise__user_id=user).values_list('id')
-    queryset = Stock.objects.select_related().values(
-        'produit__produit',
-        'produit__dci__dosage',
-        'produit__dci__forme_phrmaceutique__forme',
-        'produit__conditionnement',
-        'n_lot',
-        'date_peremption',
-        'ppa_ht',
-        'emplacement__emplacement',
-        'emplacement__magasin__magasin',
-        'colisage',
-        'conformite__statut',
-    ).filter(produit_id=product_id, emplacement__magasin_id=current_magasin,
-             conformite_id__in=current_status_produit
-             ).order_by('date_peremption').annotate(
-        first_id=Min('id'),
-        sum_totale=Sum(
-            Case(
-                When(Q(recu=True), then='qtt'), default=0)),
-        sum_disponible=Sum(
-            Case(
-                When(Q(recu=True) | Q(motif='Transfert-Out'), then='qtt'), default=0)),
-        sum_encours_out=Sum(
-            Case(
-                When(Q(recu=False) & Q(motif='Transfert-Out'), then='qtt'), default=0)),
-        sum_encours_in=Sum(
-            Case(
-                When(Q(recu=False) & Q(motif='Transfert-In'), then='qtt'), default=0))
-    ).filter(~Q(sum_encours_in__exact=0) | ~Q(sum_totale__exact=0) | ~Q(sum_encours_out__exact=0))
-    for obj in queryset:
-        obj['date_peremption'] = obj['date_peremption'].isoformat()
-        obj['ppa_ht'] = str(obj['ppa_ht'])
-        if obj['colisage'] != 0:
-            obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
-            obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
-        else:
-            obj['colis'] = 0
-            obj['vrac'] = obj['sum_disponible']
-        current_id_stock = int(obj['first_id'])
-        obj['sum_reserved'] = sum_qtt_reserved(current_id_stock)
-    return queryset
+    if request.GET['filter'] == 'all':
+        product_id = request.GET['current_produit']
+        user = request.user.id
+        current_status_produit = StatutProduit.objects.filter(statutsautorise__user_id=user).values_list('id')
+        queryset = Stock.objects.select_related().values(
+            'produit__produit',
+            'produit__dci__dosage',
+            'produit__dci__forme_phrmaceutique__forme',
+            'produit__conditionnement',
+            'n_lot',
+            'date_peremption',
+            'ppa_ht',
+            'emplacement__emplacement',
+            'emplacement__magasin__magasin',
+            'colisage',
+            'conformite__statut',
+        ).filter(produit_id=product_id,
+                 conformite_id__in=current_status_produit
+                 ).order_by('date_peremption').annotate(
+            first_id=Min('id'),
+            sum_totale=Sum(
+                Case(
+                    When(Q(recu=True), then='qtt'), default=0)),
+            sum_disponible=Sum(
+                Case(
+                    When(Q(recu=True) | Q(motif='Transfert-Out'), then='qtt'), default=0)),
+            sum_encours_out=Sum(
+                Case(
+                    When(Q(recu=False) & Q(motif='Transfert-Out'), then='qtt'), default=0)),
+            sum_encours_in=Sum(
+                Case(
+                    When(Q(recu=False) & Q(motif='Transfert-In'), then='qtt'), default=0))
+        ).filter(~Q(sum_encours_in__exact=0) | ~Q(sum_totale__exact=0) | ~Q(sum_encours_out__exact=0))
+        for obj in queryset:
+            obj['date_peremption'] = obj['date_peremption'].isoformat()
+            obj['ppa_ht'] = str(obj['ppa_ht'])
+            if obj['colisage'] != 0:
+                obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
+                obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
+            else:
+                obj['colis'] = 0
+                obj['vrac'] = obj['sum_disponible']
+            current_id_stock = int(obj['first_id'])
+            obj['sum_reserved'] = sum_qtt_reserved(current_id_stock)
+        return queryset
+    else:
+        product_id = request.GET['current_produit']
+        current_magasin = request.GET.get('current_magasin', None)
+        user = request.user.id
+        current_status_produit = StatutProduit.objects.filter(statutsautorise__user_id=user).values_list('id')
+        queryset = Stock.objects.select_related().values(
+            'produit__produit',
+            'produit__dci__dosage',
+            'produit__dci__forme_phrmaceutique__forme',
+            'produit__conditionnement',
+            'n_lot',
+            'date_peremption',
+            'ppa_ht',
+            'emplacement__emplacement',
+            'emplacement__magasin__magasin',
+            'colisage',
+            'conformite__statut',
+        ).filter(produit_id=product_id, emplacement__magasin_id=current_magasin,
+                 conformite_id__in=current_status_produit
+                 ).order_by('date_peremption').annotate(
+            first_id=Min('id'),
+            sum_totale=Sum(
+                Case(
+                    When(Q(recu=True), then='qtt'), default=0)),
+            sum_disponible=Sum(
+                Case(
+                    When(Q(recu=True) | Q(motif='Transfert-Out'), then='qtt'), default=0)),
+            sum_encours_out=Sum(
+                Case(
+                    When(Q(recu=False) & Q(motif='Transfert-Out'), then='qtt'), default=0)),
+            sum_encours_in=Sum(
+                Case(
+                    When(Q(recu=False) & Q(motif='Transfert-In'), then='qtt'), default=0))
+        ).filter(~Q(sum_encours_in__exact=0) | ~Q(sum_totale__exact=0) | ~Q(sum_encours_out__exact=0))
+        for obj in queryset:
+            obj['date_peremption'] = obj['date_peremption'].isoformat()
+            obj['ppa_ht'] = str(obj['ppa_ht'])
+            if obj['colisage'] != 0:
+                obj['vrac'] = int(obj['sum_disponible']) % (obj['colisage'])
+                obj['colis'] = int(obj['sum_disponible']) // (obj['colisage'])
+            else:
+                obj['colis'] = 0
+                obj['vrac'] = obj['sum_disponible']
+            current_id_stock = int(obj['first_id'])
+            obj['sum_reserved'] = sum_qtt_reserved(current_id_stock)
+        return queryset
 
 
 @login_required(login_url='/login/')
@@ -538,7 +603,7 @@ def qtt_disponible(request):  # aficher les produits disponibles pour le transfe
     id_stock = request.GET.get('current_id_stock', None)
     if id_stock != '' and id_stock is not None:
         obj_stock = Stock.objects.get(id=id_stock)
-        queryset = Stock.objects.select_related().values(
+        queryset = Stock.objects.values(
             'n_lot',
             'date_peremption',
             'ppa_ht',
@@ -991,18 +1056,18 @@ def stock_csv(request):
 
 def rapport_efforts(request):
 
-    return render(request,
-                  'flux_physique/confirmer_transfert_entre_filiales.html')
+    return render(request, 'flux_physique/confirmer_transfert_entre_filiales.html')
 #  **************************************************************************************************
 #  **                            Transferts Entre filiales
 #  **************************************************************************************************
-@login_required(login_url='/login/')
-@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+
+#@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+@csrf_exempt
 def confirmer_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
-        id_transaction = request.POST['id_transaction']
         if request.POST['action'] == 'check_id_transaction':
+            id_transaction = request.POST['id_transaction']
             if TransfertsEntreFiliale.objects.filter(
                     id=id_transaction,
                     statut_doc_id=1,
@@ -1014,12 +1079,13 @@ def confirmer_transferts_entre_filiales(request):
             else:
                 return HttpResponse('N° de Bon erroné !')
         elif request.POST['action'] == 'confirm_transaction':
+            id_transaction = request.POST['id_transaction']
             code_rh_1 = request.POST['code_RH1']
             code_rh_2 = request.POST['code_RH2']
             code_rh_3 = request.POST['code_RH3']
             nombre_colis = request.POST['nombre_colis']
             nombre_colis_frigo = request.POST['nombre_colis_frigo']
-            user_id = request.POST['created_by']
+            user_id = request.user.id
 
             response = crud.confirmer_transfert_entre_filiale(
                 id_transaction=id_transaction,
@@ -1040,18 +1106,18 @@ def confirmer_transferts_entre_filiales(request):
             'nombre_colis_frigo',
             'statut_doc__statut',
             'created_by__username'
-            ).filter(statut_doc_id=1, depuis_filiale=current_filiale)
+            ).filter(statut_doc_id=1, depuis_filiale=current_filiale).order_by('created_date').reverse()
     response = json.dumps(list(query), cls=DjangoJSONEncoder)
     return HttpResponse(response, content_type='application/json')
 
-@login_required(login_url='/login/')
-@permission_required('flux_physique.confirmer_tef', raise_exception=True)
+
+#@permission_required('flux_physique.confirmer_tef', raise_exception=True)
 def confirmer_transfert_entre_filiale_view(request):
     return render(request,
                   'flux_physique/confirmer_transfert_entre_filiales.html')
 
-@login_required(login_url='/login/')
-@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+
+#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def reception_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
@@ -1089,18 +1155,18 @@ def reception_transferts_entre_filiales(request):
             'nombre_colis_frigo',
             'statut_doc__statut',
             'created_by__username'
-            ).filter(statut_doc_id=3, vers_filiale=current_filiale)
+            ).filter(statut_doc_id=3, vers_filiale=current_filiale).order_by('created_date').reverse()
     response = json.dumps(list(query), cls=DjangoJSONEncoder)
     return HttpResponse(response, content_type='application/json')
 
-@login_required(login_url='/login/')
-@permission_required('flux_physique.recevoir_tef', raise_exception=True)
+
+#@permission_required('flux_physique.recevoir_tef', raise_exception=True)
 def reception_transfert_entre_filiale_view(request):
     return render(request,
                   'flux_physique/reception_transfert_entre_filiales.html')
 
-@login_required(login_url='/login/')
-@permission_required('flux_physique.exporter_stock', raise_exception=True)
+
+#@permission_required('flux_physique.exporter_stock', raise_exception=True)
 def historiques_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':
@@ -1138,15 +1204,16 @@ def historiques_transferts_entre_filiales(request):
         'nombre_colis_frigo',
         'statut_doc__statut',
         'created_by__username'
-        )
+        ).order_by('created_date').reverse()
     response = json.dumps(list(query), cls=DjangoJSONEncoder)
     return HttpResponse(response, content_type='application/json')
 
-@login_required(login_url='/login/')
-@permission_required('flux_physique.voir_historique', raise_exception=True)
+
+#@permission_required('flux_physique.voir_historique', raise_exception=True)
 def historique_transfert_entre_filiale_view(request):
     return render(request,
                   'flux_physique/historique_transfert_entre_filiales.html')
+
 
 @ajax
 @login_required(login_url='/login/')
@@ -1183,3 +1250,16 @@ def print_transfert_entre_filiales(request):
             'transfer': transfert,
             'details_transfert': details_transfert,
             'type_mouvement': type_mouvement})
+
+
+
+@permission_required('flux_physique.ajouter_tef', raise_exception=True)
+def add_transfert_entre_fililales(request):
+    username = ' '.join((request.user.first_name, request.user.last_name))
+    user = request.user
+    current_filiale = Parametres.objects.get(id=1).filiale_id
+    product_form = ProductModelForm()
+    form = TransfertEntreFilialesModelForm(initial={'depuis_filiale': current_filiale})
+    return render(request, 'flux_physique/add_transfert_entre_filiale.html',
+                  {'form': form, 'product_form': product_form, 'user': user, 'username': username})
+

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Sum
+from django.utils import timezone
 from django.db import transaction
 from flux_physique.models import Transfert, Reservation, DetailsTransfert, EnteteTempo, Stock, HistoriqueDuTravail, \
     Validation, DetailsAchatsFournisseur, AchatsFournisseur, Parametres, TransfertsEntreFiliale, \
@@ -278,9 +279,9 @@ def compresser_stock2():
     return 'ok'
 
 
-@transaction.atomic
+
 def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user_id):
-    depuis_filiale_id = Parametres.objects.get(id=1).filiale_id
+    depuis_filiale_id = Parametres.objects.get(id=1).filiale.id
     if depuis_filiale_id == vers_filiale_id:
         return 'Vous ne pouvez pas faire un transfert vers votre filiale'
     else:
@@ -289,7 +290,8 @@ def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user
                                                statut_doc_id=1,
                                                created_by_id=user_id)
         new_transfert.save()
-        for obj in Reservation.objects.filter(id=entete_reservation_id):
+        default_emplacement = Parametres.objects.get(id=1).emplacement_expedition_transfert_entre_filiale
+        for obj in Reservation.objects.filter(entete_tempo=entete_reservation_id).all():
             new_line = DetailsTransfertEntreFiliale(
                 entete_id=new_transfert.id,
                 conformite_id=obj.id_stock.conformite_id,
@@ -306,47 +308,54 @@ def ajouter_transfert_entre_filiale(vers_filiale_id, entete_reservation_id, user
                 volume_boite=obj.id_stock.volume_boite,
                 poids_colis=obj.id_stock.poids_colis,
                 qtt=obj.qtt,
-                created_by_id=user_id
-            )
+                created_by_id=user_id,
+                depuis_emplacement=obj.id_stock.emplacement,
+                vers_emplacement=default_emplacement,
+                created_date=timezone.now(),
+                modified_date=timezone.now()
+                )
             new_line.save()
-            return 'OK'
+        return ['OK', new_transfert.id]
 
 
-@transaction.atomic
+
+#@transaction.atomic
 def confirmer_transfert_entre_filiale(id_transaction, created_by_id, code_rh1, code_rh2, code_rh3, nombre_colis,
                                       nombre_colis_frigo):
-    details_contenent_type = ContentType.objects.get_for_model(DetailsTransfertEntreFiliale).id
-    transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
-    transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
-    if transfert_obj.statut_doc_id == 2:
-        return 'Ce bon est déja validé'
-    elif transfert_obj.depuis_filiale != Parametres.objects.get(id=1).filiale:
-        return 'Vous ne pouvez pas valider ce Bon'
-    else:
-        transfert_obj.statut_doc_id = 2
-        transfert_obj.nombre_colis = nombre_colis
-        transfert_obj.nombre_colis_frigo = nombre_colis_frigo
-        transfert_obj.save()
-        id_details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=id_transaction).values_list('id')
-        if id_details_transfert.exists():
-           Stock.objects.filter(content_type=details_contenent_type,
-                                id_in_content_type__in=id_details_transfert).update(recu=True)
-        current_validation = Validation.objects.get(id_in_content_type=id_transaction,
+    try:
+
+        details_contenent_type = ContentType.objects.get_for_model(DetailsTransfertEntreFiliale).id
+        transfert_contenent_type = ContentType.objects.get_for_model(TransfertsEntreFiliale).id
+        transfert_obj = TransfertsEntreFiliale.objects.get(id=id_transaction)
+        if transfert_obj.statut_doc_id == 2:
+            return 'Ce bon est déja validé'
+        elif transfert_obj.depuis_filiale != Parametres.objects.get(id=1).filiale:
+            return 'Vous ne pouvez pas valider ce Bon'
+        else:
+            transfert_obj.statut_doc_id = 2
+            transfert_obj.nombre_colis = nombre_colis
+            transfert_obj.nombre_colis_frigo = nombre_colis_frigo
+            transfert_obj.save()
+            id_details_transfert = DetailsTransfertEntreFiliale.objects.filter(entete=id_transaction).values_list('id')
+            if id_details_transfert.exists():
+               Stock.objects.filter(content_type=details_contenent_type,
+                                    id_in_content_type__in=id_details_transfert).update(recu=True)
+            current_validation = Validation.objects.get(id_in_content_type=id_transaction,
                                                     content_type=transfert_contenent_type)
-        current_validation.created_by_id = created_by_id  # initialised with id = admin
-        current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
-        groupe_list = [code_rh1, code_rh2, code_rh3]
-        groupe_list = list(filter(None, groupe_list))
-        groupe_count = len(groupe_list)
-        for item in groupe_list:
-            employee = Employer.objects.get(code_RH=item)
-            new_execution = HistoriqueDuTravail(
-               employer=employee,
-               groupe=groupe_count,
-               id_validation=current_validation
-            )
-            new_execution.save()
-        return 'OK'
+            current_validation.created_by_id = created_by_id  # initialised with id = admin
+            current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
+            groupe_list = [code_rh1, code_rh2, code_rh3]
+            groupe_list = list(filter(None, groupe_list))
+            groupe_count = len(groupe_list)
+            for item in groupe_list:
+                employee = Employer.objects.get(code_RH=item).id
+                HistoriqueDuTravail(
+                   employer_id=employee,
+                   groupe=groupe_count,
+                   id_validation=current_validation).save()
+            return 'OK'
+    except Exception as e:
+        return e
 
 
 @transaction.atomic
@@ -360,7 +369,7 @@ def expedition_transferts_entre_filiales(id_transaction, created_by_id, code_rh1
                                                     content_type=current_contenent_type)
         current_validation.created_by_id = created_by_id  # initialised with id = admin
         current_validation.save()  # TODO corriger la validation sur transfert et achat , id = admin, then update
-        groupe_list = [code_rh1, code_RH2, code_RH3]
+        groupe_list = [code_rh1, code_rh2, code_rh3]
         groupe_list = list(filter(None, groupe_list))
         groupe_count = len(groupe_list)
         for item in groupe_list:
