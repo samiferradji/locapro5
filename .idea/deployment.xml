@@ -23,13 +23,6 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="wms">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/sami/wms" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
     </serverData>
   </component>
 </project>

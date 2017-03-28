@@ -16,7 +16,7 @@ from flux_physique.models import *
 from flux_physique.forms import TransfertModelForm, ProductModelForm, EntreposageModelForm, \
     TransfertEntreFilialesModelForm
 from flux_physique.crud import commit_transaction, validate_transaction, confirmer_transfert_entre_filiale
-from refereces.models import DepuisMagasinsAutorise, Employer
+from refereces.models import DepuisMagasinsAutorise, Employer, ProduitAdresses
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 from flux_physique import crud
@@ -1054,9 +1054,73 @@ def stock_csv(request):
     return response
 
 
-def rapport_efforts(request):
+@transaction.atomic
+def recalcule_efforts(request):
+    """validations = Validation.objects.values('id_in_content_type', 'content_type').annotate(min_id=Min('id'))
+    l = len(validations)
+    myliste = []
+    for item in validations:
+        myliste.append(item['min_id'])
+    for obj in Validation.objects.all():
+        if obj.id in myliste:
+            pass
+        else:
+            obj.delete()
 
-    return render(request, 'flux_physique/confirmer_transfert_entre_filiales.html')
+    trasferts = Transfert.objects.filter(created_date__range=('2017-02-20','2017-03-20'))
+    param = Parametres.objects.get(id=1)
+    for obj in trasferts:
+        vrac = 0
+        colis = 0
+        colis_en_palette = 0
+        obj_details = DetailsTransfert.objects.select_related('entete',
+                                                              'vers_emplacement',
+                                                              'depuis_emplacement').filter(entete=obj.id)
+        for line in obj_details:
+            if line.colisage != 0:
+                if line.entete.motif in [param.process_entreposage, param.process_etalage]:
+                    if line.vers_emplacement.type_entreposage_id == 1:
+                        vrac += line.qtt
+                    if line.vers_emplacement.type_entreposage_id == 2:
+                        vrac += line.qtt % line.colisage
+                        colis += line.qtt // line.colisage
+                    if line.vers_emplacement.type_entreposage_id == 3:
+                        vrac += line.qtt % line.colisage
+                        colis_en_palette += line.qtt // line.colisage
+                else:
+                    if line.depuis_emplacement.type_entreposage_id == 1:
+                        vrac += line.qtt
+                    if line.depuis_emplacement.type_entreposage_id == 2:
+                        vrac += line.qtt % line.colisage
+                        colis += line.qtt // line.colisage
+                    if line.depuis_emplacement.type_entreposage_id == 3:
+                        vrac += line.qtt % line.colisage
+                        colis_en_palette += line.qtt // line.colisage
+            else:
+                vrac += line.qtt
+
+        if Validation.objects.filter(content_type=31, id_in_content_type=obj.id).exists():
+            current_validation = Validation.objects.get(content_type=31, id_in_content_type=obj.id)
+            current_validation.boites_en_vrac = vrac
+            current_validation.colis_count = colis
+            current_validation.colis_en_palette = colis_en_palette
+            current_validation.motif_mvnt = obj.motif
+            current_validation.save()
+            """
+    produit_liste = Produit.objects.values()[:20]
+    produit_to_pick = Produit.objects.all()
+    for obj in produit_to_pick:
+        if ProduitAdresses.objects.filter(id= obj.code).exists():
+            current_empl = ProduitAdresses.objects.get(id= obj.code).adresse
+            obj.prelevement_id = Emplacement.objects.get(emplacement__exact=current_empl).id
+            obj.save()
+        else:
+            obj.prelevement_id = 3
+            obj.save()
+
+
+
+    return HttpResponse(produit_liste)
 #  **************************************************************************************************
 #  **                            Transferts Entre filiales
 #  **************************************************************************************************

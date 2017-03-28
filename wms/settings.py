@@ -86,10 +86,10 @@ WSGI_APPLICATION = 'wms.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
-        'NAME': 'locapro_svgd',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',
+        'NAME': 'locapro5',
+        'USER': 'locapro_user',
+        'PASSWORD': 'Toxico2020',
+        'HOST': '172.25.3.20',
         },
     'shared_db': {
         'ENGINE': 'mysql.connector.django',

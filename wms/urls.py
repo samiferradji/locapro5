@@ -55,7 +55,7 @@ urlpatterns = patterns(
     url(r'^liste-des-produit/', flux_physique_views.list_des_produit, name='liste-des-produit'),
     url(r'^import/', import_data),
     url(r'^import_facture_client/', import_facture_client),
-    url(r'^rapport/', flux_physique_views.rapport_efforts),
+    url(r'^recalculer/', flux_physique_views.recalcule_efforts),
     url(r'^sync/', shared_views.synch_data),
     url(r'^reverse_sync/', shared_views.reverse_synch_data),
     url(r'^confirmer_transferts_entre_filiales/', flux_physique_views.confirmer_transferts_entre_filiales),

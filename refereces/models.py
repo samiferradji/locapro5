@@ -380,3 +380,11 @@ def add_types_mvt_stock_to_global_data(sender, instance, created, **kwargs):
                                             )
         new_obj.save()
 
+class ProduitAdresses(models.Model):
+    id = models.CharField(max_length=20, primary_key=True)
+    produit = models.CharField(max_length=200)
+    adresse = models.CharField(max_length=20)
+
+    class Meta:
+        managed = False
+        db_table = 'tempo_adresses'

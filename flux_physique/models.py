@@ -197,7 +197,7 @@ class Stock(BaseModel):
 
 class DetailsTransfert(BaseModel):
     entete = models.ForeignKey(Transfert, on_delete=models.PROTECT)
-    id_in_content_type = models.PositiveIntegerField(verbose_name='Id in content type')
+    id_in_content_type = models.CharField(max_length=20, verbose_name='Id in content type')
     content_type = models.PositiveIntegerField(verbose_name='Contenent_type')
     conformite = models.ForeignKey(StatutProduit, verbose_name='Statut', on_delete=models.PROTECT)
     depuis_emplacement = models.ForeignKey(Emplacement, verbose_name='Depuis Empl', on_delete=models.PROTECT,
@@ -284,6 +284,10 @@ class Validation(BaseModel):
 
     def __str__(self):
         return ' '.join((str(self.id_in_content_type), str(self.content_type)))
+
+    class Meta:
+        unique_together = ("id_in_content_type", "content_type")
+        index_together = ["id_in_content_type", "content_type"]
 
 
 class HistoriqueDuTravail(models.Model):

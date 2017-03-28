@@ -186,12 +186,11 @@
                         }
                         if (data.content[0] =='OK'){
                             $('#executer3').val(data.content[1]);
-                            $('#code-rh3').prop('disabled',true);
+                            $('#code-rh3').prop('disabled',true).focus();
                             $('#ajouter_executants').prop('disabled',false);
                         }
                         if (data.content=='VIDE') {
-                            $('#ajouter_executants').focus();
-                            $('#code-rh3').prop('disabled',true);
+                            $('#code-rh3').prop('disabled',true).focus();
                             $('#ajouter_executants').prop('disabled',false);
                         }
                     })
@@ -199,7 +198,7 @@
             })
         })
         $('#ajouter_executants').click(function () {
-            $(this).prop('disabled', true)
+            $(this).prop('disabled', true);
             var code1 = $('#code-rh1').val();
             var code2 = $('#code-rh2').val();
             var code3 = $('#code-rh3').val();
