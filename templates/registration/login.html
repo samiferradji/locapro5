@@ -69,6 +69,9 @@
             if (/chrom(e|ium)/.test(navigator.userAgent.toLowerCase())) {
                 return true;
             }
+            if (/firefox/.test(navigator.userAgent.toLowerCase())) {
+                return true;
+            }
             else {
                 alert("Pour une utilisation optimale , vous devez utiliser LOCAPRO 5 sur Google Chrome !");
                 $(':input').prop('disabled',true);

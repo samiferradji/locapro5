@@ -205,7 +205,7 @@ class StatutsAutorise(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
-    code_employee = models.ForeignKey(Employer, verbose_name='Code Employé')
+    code_employee = models.ForeignKey(Employer, verbose_name='Code Employé', null=True)
 
 
 @receiver(post_save, sender=User)

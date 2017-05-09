@@ -1002,6 +1002,7 @@ def stock_csv(request):
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response, delimiter=';')
     queryset = Stock.objects.values_list(
+        'produit__code',
         'produit__produit',
         'produit__dci__dosage',
         'produit__dci__forme_phrmaceutique__forme',
@@ -1013,24 +1014,25 @@ def stock_csv(request):
         'emplacement__magasin__magasin',
         'colisage',
         'conformite__statut',
-    ).annotate(Sum('qtt')).order_by('produit__produit').filter(recu=True)
+    ).annotate(Sum('qtt')).order_by('produit__produit').filter(recu=True).exclude(qtt__sum = 0)
     stock = []
     for obj in queryset:
         obj = list(obj)
-        if obj[9] != 0:
-            colis = int(obj[11]) % (obj[9])
-            vrac = int(obj[11]) // (obj[9])
+        if obj[10] != 0:
+            colis = int(obj[12]) // (obj[10])
+            vrac = int(obj[12]) % (obj[10])
             obj.append(colis)
             obj.append(vrac)
             stock.append(obj)
         else:
             colis = 0
-            vrac = obj[11]
+            vrac = obj[12]
             obj.append(colis)
             obj.append(vrac)
             stock.append(obj)
     writer.writerow(
-        ['Produit',
+        ['code',
+         'Produit',
          'Dosage',
          'Forme',
          'Conditionnement',
@@ -1056,7 +1058,7 @@ def stock_csv(request):
 
 @transaction.atomic
 def recalcule_efforts(request):
-    """validations = Validation.objects.values('id_in_content_type', 'content_type').annotate(min_id=Min('id'))
+    validations = Validation.objects.values('id_in_content_type', 'content_type').all().annotate(min_id=Min('id'))
     l = len(validations)
     myliste = []
     for item in validations:
@@ -1066,7 +1068,7 @@ def recalcule_efforts(request):
             pass
         else:
             obj.delete()
-
+    """
     trasferts = Transfert.objects.filter(created_date__range=('2017-02-20','2017-03-20'))
     param = Parametres.objects.get(id=1)
     for obj in trasferts:
@@ -1106,21 +1108,21 @@ def recalcule_efforts(request):
             current_validation.colis_en_palette = colis_en_palette
             current_validation.motif_mvnt = obj.motif
             current_validation.save()
-            """
+
     produit_liste = Produit.objects.values()[:20]
     produit_to_pick = Produit.objects.all()
     for obj in produit_to_pick:
-        if ProduitAdresses.objects.filter(id= obj.code).exists():
-            current_empl = ProduitAdresses.objects.get(id= obj.code).adresse
+        if ProduitAdresses.objects.filter(id=obj.code).exists():
+            current_empl = ProduitAdresses.objects.get(id=obj.code).adresse
             obj.prelevement_id = Emplacement.objects.get(emplacement__exact=current_empl).id
             obj.save()
         else:
             obj.prelevement_id = 3
-            obj.save()
+            obj.save()"""
 
 
 
-    return HttpResponse(produit_liste)
+    return HttpResponse('OK')
 #  **************************************************************************************************
 #  **                            Transferts Entre filiales
 #  **************************************************************************************************
@@ -1231,7 +1233,7 @@ def reception_transfert_entre_filiale_view(request):
                   'flux_physique/reception_transfert_entre_filiales.html')
 
 
-@permission_required('flux_physique.exporter_stock', raise_exception=True)
+@permission_required('flux_physique.voir_historique', raise_exception=True)
 def historiques_transferts_entre_filiales(request):
     current_filiale = Parametres.objects.get(id=1).filiale
     if request.method == 'POST':

@@ -46,7 +46,6 @@ INSTALLED_APPS = (
     'ajax_select',
     'shared_data',
     )
-
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -87,9 +86,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'locapro5',
-        'USER': 'locapro_user',
-        'PASSWORD': 'Toxico2020',
-        'HOST': '172.25.3.20',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',
         },
     'shared_db': {
         'ENGINE': 'mysql.connector.django',
